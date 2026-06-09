@@ -1,0 +1,697 @@
+{
+  "info": {
+    "_postman_id": "salono-api-collection",
+    "name": "Salono API",
+    "description": "Collection Salono — Auth, Salon, CRUD métier, Booking public, Webhook WhatsApp.\n\nImport aussi `environment.local.json`.\n\nOrdre recommandé :\n1. Register ou Login → token auto-sauvegardé\n2. GET services / users pour remplir les UUID\n3. Clients → Appointments → Payments\n4. Booking public (sans token)\n5. Webhook WhatsApp (HMAC requis si WHATSAPP_APP_SECRET configuré)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8000/api" }
+  ],
+  "item": [
+    {
+      "name": "01 — Auth (public)",
+      "item": [
+        {
+          "name": "Register salon",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": {
+              "mode": "file",
+              "file": { "src": "payloads/auth/register.json" }
+            },
+            "url": "{{base_url}}/v1/auth/register",
+            "description": "Crée salon + admin + abonnement trial. Body : payloads/auth/register.json"
+          },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "if (pm.response.code === 201) {",
+                "  const j = pm.response.json();",
+                "  if (j.data?.access_token) pm.environment.set('token', j.data.access_token);",
+                "  if (j.data?.salon?.slug) pm.environment.set('salon_slug', j.data.salon.slug);",
+                "}"
+              ],
+              "type": "text/javascript"
+            }
+          }]
+        },
+        {
+          "name": "Login",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": {
+              "mode": "file",
+              "file": { "src": "payloads/auth/login.json" }
+            },
+            "url": "{{base_url}}/v1/auth/login"
+          },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "if (pm.response.code === 200) {",
+                "  const j = pm.response.json();",
+                "  if (j.data?.access_token) pm.environment.set('token', j.data.access_token);",
+                "}"
+              ],
+              "type": "text/javascript"
+            }
+          }]
+        },
+        {
+          "name": "Verify OTP",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": { "mode": "file", "file": { "src": "payloads/auth/verify-otp.json" } },
+            "url": "{{base_url}}/v1/auth/verify-otp"
+          }
+        },
+        {
+          "name": "Resend OTP",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": { "mode": "file", "file": { "src": "payloads/auth/resend-otp.json" } },
+            "url": "{{base_url}}/v1/auth/resend-otp"
+          }
+        },
+        {
+          "name": "Forgot password",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": { "mode": "file", "file": { "src": "payloads/auth/forgot-password.json" } },
+            "url": "{{base_url}}/v1/auth/forgot-password"
+          }
+        },
+        {
+          "name": "Verify reset code",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": { "mode": "file", "file": { "src": "payloads/auth/verify-reset-code.json" } },
+            "url": "{{base_url}}/v1/auth/verify-reset-code"
+          }
+        },
+        {
+          "name": "Reset password",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": { "mode": "file", "file": { "src": "payloads/auth/reset-password.json" } },
+            "url": "{{base_url}}/v1/auth/reset-password"
+          }
+        },
+        {
+          "name": "Me",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": "{{base_url}}/v1/auth/me"
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": "{{base_url}}/v1/auth/logout"
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 — Salon (admin)",
+      "item": [
+        {
+          "name": "Get salon",
+          "request": { "method": "GET", "header": [{ "key": "Accept", "value": "application/json" }], "url": "{{base_url}}/v1/salon" }
+        },
+        {
+          "name": "Update salon",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": { "mode": "file", "file": { "src": "payloads/salon/update.json" } },
+            "url": "{{base_url}}/v1/salon"
+          }
+        },
+        {
+          "name": "Upload logo",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": {
+              "mode": "formdata",
+              "formdata": [{ "key": "logo", "type": "file", "src": [] }]
+            },
+            "url": "{{base_url}}/v1/salon/logo",
+            "description": "Sélectionner un fichier image (jpg/png) dans le champ logo."
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 — Employés (admin)",
+      "item": [
+        {
+          "name": "List employees",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/v1/users?page=1&per_page=15",
+              "host": ["{{base_url}}"],
+              "path": ["v1", "users"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "per_page", "value": "15" },
+                { "key": "search", "value": "", "disabled": true }
+              ]
+            }
+          },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "if (pm.response.code === 200) {",
+                "  const j = pm.response.json();",
+                "  if (j.data?.[0]?.id) pm.environment.set('user_id', j.data[0].id);",
+                "}"
+              ],
+              "type": "text/javascript"
+            }
+          }]
+        },
+        {
+          "name": "Create stylist",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": { "mode": "file", "file": { "src": "payloads/users/create-stylist.json" } },
+            "url": "{{base_url}}/v1/users"
+          },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "if (pm.response.code === 201) {",
+                "  const j = pm.response.json();",
+                "  if (j.data?.id) { pm.environment.set('employee_id', j.data.id); pm.environment.set('user_id', j.data.id); }",
+                "}"
+              ],
+              "type": "text/javascript"
+            }
+          }]
+        },
+        {
+          "name": "Create receptionist",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": { "mode": "file", "file": { "src": "payloads/users/create-receptionist.json" } },
+            "url": "{{base_url}}/v1/users"
+          }
+        },
+        {
+          "name": "Get employee",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": "{{base_url}}/v1/users/{{employee_id}}"
+          }
+        },
+        {
+          "name": "Update employee",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": { "mode": "file", "file": { "src": "payloads/users/update.json" } },
+            "url": "{{base_url}}/v1/users/{{employee_id}}"
+          }
+        },
+        {
+          "name": "Deactivate employee",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": "{{base_url}}/v1/users/{{employee_id}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 — Prestations",
+      "item": [
+        {
+          "name": "List services",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/v1/services?page=1&per_page=15",
+              "host": ["{{base_url}}"],
+              "path": ["v1", "services"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "per_page", "value": "15" },
+                { "key": "search", "value": "", "disabled": true },
+                { "key": "is_active", "value": "true", "disabled": true }
+              ]
+            }
+          },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "if (pm.response.code === 200) {",
+                "  const j = pm.response.json();",
+                "  if (j.data?.[0]?.id) pm.environment.set('service_id', j.data[0].id);",
+                "}"
+              ],
+              "type": "text/javascript"
+            }
+          }]
+        },
+        {
+          "name": "Create service (admin)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": { "mode": "file", "file": { "src": "payloads/services/create.json" } },
+            "url": "{{base_url}}/v1/services"
+          },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "if (pm.response.code === 201) {",
+                "  const j = pm.response.json();",
+                "  if (j.data?.id) pm.environment.set('service_id', j.data.id);",
+                "}"
+              ],
+              "type": "text/javascript"
+            }
+          }]
+        },
+        {
+          "name": "Update service (admin)",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": { "mode": "file", "file": { "src": "payloads/services/update.json" } },
+            "url": "{{base_url}}/v1/services/{{service_id}}"
+          }
+        },
+        {
+          "name": "Deactivate service (admin)",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": "{{base_url}}/v1/services/{{service_id}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 — Clients",
+      "item": [
+        {
+          "name": "List clients",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/v1/clients?page=1&per_page=15",
+              "host": ["{{base_url}}"],
+              "path": ["v1", "clients"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "per_page", "value": "15" },
+                { "key": "search", "value": "", "disabled": true }
+              ]
+            }
+          },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "if (pm.response.code === 200) {",
+                "  const j = pm.response.json();",
+                "  if (j.data?.[0]?.id) pm.environment.set('client_id', j.data[0].id);",
+                "}"
+              ],
+              "type": "text/javascript"
+            }
+          }]
+        },
+        {
+          "name": "Create client",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": { "mode": "file", "file": { "src": "payloads/clients/create.json" } },
+            "url": "{{base_url}}/v1/clients"
+          },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "if (pm.response.code === 201) {",
+                "  const j = pm.response.json();",
+                "  if (j.data?.id) pm.environment.set('client_id', j.data.id);",
+                "}"
+              ],
+              "type": "text/javascript"
+            }
+          }]
+        },
+        {
+          "name": "Get client",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": "{{base_url}}/v1/clients/{{client_id}}"
+          }
+        },
+        {
+          "name": "Update client",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": { "mode": "file", "file": { "src": "payloads/clients/update.json" } },
+            "url": "{{base_url}}/v1/clients/{{client_id}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "06 — Rendez-vous",
+      "item": [
+        {
+          "name": "List appointments",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/v1/appointments?page=1&per_page=15",
+              "host": ["{{base_url}}"],
+              "path": ["v1", "appointments"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "per_page", "value": "15" },
+                { "key": "date", "value": "2026-05-24", "disabled": true },
+                { "key": "from", "value": "2026-05-01", "disabled": true },
+                { "key": "to", "value": "2026-05-31", "disabled": true },
+                { "key": "user_id", "value": "{{user_id}}", "disabled": true }
+              ]
+            }
+          },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "if (pm.response.code === 200) {",
+                "  const j = pm.response.json();",
+                "  if (j.data?.[0]?.id) pm.environment.set('appointment_id', j.data[0].id);",
+                "}"
+              ],
+              "type": "text/javascript"
+            }
+          }]
+        },
+        {
+          "name": "Create appointment",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": { "mode": "file", "file": { "src": "payloads/appointments/create.json" } },
+            "url": "{{base_url}}/v1/appointments"
+          },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "if (pm.response.code === 201) {",
+                "  const j = pm.response.json();",
+                "  if (j.data?.id) pm.environment.set('appointment_id', j.data.id);",
+                "}"
+              ],
+              "type": "text/javascript"
+            }
+          }]
+        },
+        {
+          "name": "Get appointment",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": "{{base_url}}/v1/appointments/{{appointment_id}}"
+          }
+        },
+        {
+          "name": "Update status → confirmed",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": { "mode": "file", "file": { "src": "payloads/appointments/update-status-confirmed.json" } },
+            "url": "{{base_url}}/v1/appointments/{{appointment_id}}/status"
+          }
+        },
+        {
+          "name": "Update status → completed",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": { "mode": "file", "file": { "src": "payloads/appointments/update-status-completed.json" } },
+            "url": "{{base_url}}/v1/appointments/{{appointment_id}}/status"
+          }
+        },
+        {
+          "name": "Cancel appointment",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": "{{base_url}}/v1/appointments/{{appointment_id}}"
+          }
+        },
+        {
+          "name": "Update status → cancelled",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": { "mode": "file", "file": { "src": "payloads/appointments/update-status-cancelled.json" } },
+            "url": "{{base_url}}/v1/appointments/{{appointment_id}}/status"
+          }
+        }
+      ]
+    },
+    {
+      "name": "07 — Paiements",
+      "item": [
+        {
+          "name": "List payments",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}/v1/payments?page=1&per_page=15",
+              "host": ["{{base_url}}"],
+              "path": ["v1", "payments"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "per_page", "value": "15" },
+                { "key": "date", "value": "2026-05-24", "disabled": true },
+                { "key": "method", "value": "cash", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create payment (cash)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": { "mode": "file", "file": { "src": "payloads/payments/create-cash.json" } },
+            "url": "{{base_url}}/v1/payments"
+          }
+        },
+        {
+          "name": "Create payment (mobile money)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": { "mode": "file", "file": { "src": "payloads/payments/create-mobile-money.json" } },
+            "url": "{{base_url}}/v1/payments"
+          }
+        },
+        {
+          "name": "Payment summary (admin)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": "{{base_url}}/v1/payments/summary"
+          }
+        }
+      ]
+    },
+    {
+      "name": "08 — Booking public (sans auth)",
+      "item": [
+        {
+          "name": "Get salon booking info",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": "{{base_url}}/booking/{{salon_slug}}",
+            "description": "Retourne salon + services + employees + booking_link wa.me"
+          },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "if (pm.response.code === 200) {",
+                "  const j = pm.response.json();",
+                "  if (j.data?.services?.[0]?.id) pm.environment.set('service_id', j.data.services[0].id);",
+                "  if (j.data?.employees?.[0]?.id) pm.environment.set('user_id', j.data.employees[0].id);",
+                "}"
+              ],
+              "type": "text/javascript"
+            }
+          }]
+        },
+        {
+          "name": "Create public booking",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": { "mode": "file", "file": { "src": "payloads/booking/create.json" } },
+            "url": "{{base_url}}/booking/{{salon_slug}}",
+            "description": "scheduled_at doit être dans le futur. Récupérer un créneau via GET booking ou bot."
+          },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "if (pm.response.code === 201) {",
+                "  const j = pm.response.json();",
+                "  if (j.data?.id) pm.environment.set('appointment_id', j.data.id);",
+                "}"
+              ],
+              "type": "text/javascript"
+            }
+          }]
+        }
+      ]
+    },
+    {
+      "name": "09 — Webhook WhatsApp (public)",
+      "item": [
+        {
+          "name": "Verify webhook (Meta)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "text/plain" }],
+            "url": {
+              "raw": "{{base_url}}/webhook/whatsapp?hub.mode=subscribe&hub.verify_token={{whatsapp_verify_token}}&hub.challenge=1158201444",
+              "host": ["{{base_url}}"],
+              "path": ["webhook", "whatsapp"],
+              "query": [
+                { "key": "hub.mode", "value": "subscribe" },
+                { "key": "hub.verify_token", "value": "{{whatsapp_verify_token}}" },
+                { "key": "hub.challenge", "value": "1158201444" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Incoming message — RDV slug",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Hub-Signature-256", "value": "{{whatsapp_hmac_signature}}", "description": "sha256=... calculé sur le body brut" }
+            ],
+            "body": { "mode": "file", "file": { "src": "payloads/webhook/meta-incoming-rdv.json" } },
+            "url": "{{base_url}}/webhook/whatsapp",
+            "description": "Si WHATSAPP_APP_SECRET vide et WHATSAPP_ENABLED=false, pas de HMAC requis. Sinon utiliser pre-request script pour signer."
+          },
+          "event": [{
+            "listen": "prerequest",
+            "script": {
+              "exec": [
+                "const secret = pm.environment.get('whatsapp_app_secret');",
+                "if (!secret) return;",
+                "const body = pm.request.body.mode === 'raw' ? pm.request.body.raw : '';",
+                "const crypto = require('crypto-js');",
+                "const hash = crypto.HmacSHA256(body, secret).toString(crypto.enc.Hex);",
+                "pm.request.headers.upsert({ key: 'X-Hub-Signature-256', value: 'sha256=' + hash });"
+              ],
+              "type": "text/javascript"
+            }
+          }]
+        },
+        {
+          "name": "Incoming message — choose service (1)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "file", "file": { "src": "payloads/webhook/meta-incoming-choose-service.json" } },
+            "url": "{{base_url}}/webhook/whatsapp"
+          }
+        },
+        {
+          "name": "Incoming message — confirm oui",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "file", "file": { "src": "payloads/webhook/meta-incoming-confirm-oui.json" } },
+            "url": "{{base_url}}/webhook/whatsapp"
+          }
+        },
+        {
+          "name": "Status event — delivered (ignored)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "file", "file": { "src": "payloads/webhook/meta-status-delivered.json" } },
+            "url": "{{base_url}}/webhook/whatsapp"
+          }
+        }
+      ]
+    }
+  ]
+}

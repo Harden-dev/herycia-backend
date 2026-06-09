@@ -1,0 +1,214 @@
+<?php
+
+namespace App\Http\Controllers\API\V1\Salon;
+
+use App\Actions\Salon\GetSalonAction;
+use App\Actions\Salon\UpdateSalonAction;
+use App\Actions\Salon\UploadSalonLogoAction;
+use App\Data\Salon\UpdateSalonData;
+use App\Http\Controllers\Controller;
+use App\Http\Requests\V1\Salon\UpdateSalonRequest;
+use App\Http\Requests\V1\Salon\UploadSalonLogoRequest;
+use App\Http\Resources\V1\Salon\SalonDetailResource;
+use App\Services\Salon\SalonBookingQrCodeService;
+use App\Services\Salon\SalonContextService;
+use Exception;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Log;
+use Symfony\Component\HttpFoundation\Response;
+
+/**
+ * @OA\Tag(
+ *     name="Salon",
+ *     description="Gestion du profil salon"
+ * )
+ */
+class SalonController extends Controller
+{
+    public function __construct(
+        private GetSalonAction $getSalonAction,
+        private UpdateSalonAction $updateSalonAction,
+        private UploadSalonLogoAction $uploadSalonLogoAction,
+        private SalonContextService $salonContext,
+        private SalonBookingQrCodeService $bookingQrCodeService,
+    ) {}
+
+    /**
+     * @OA\Get(
+     *     path="/api/v1/salon",
+     *     summary="Informations complètes du salon connecté",
+     *     operationId="getSalon",
+     *     tags={"Salon"},
+     *     security={{"bearerAuth":{}}},
+     *
+     *     @OA\Response(
+     *         response=200,
+     *         description="Salon récupéré avec succès",
+     *
+     *         @OA\JsonContent(
+     *
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Salon récupéré avec succès"),
+     *             @OA\Property(property="data", type="object")
+     *         )
+     *     ),
+     *
+     *     @OA\Response(response=401, description="Non authentifié"),
+     *     @OA\Response(response=403, description="Accès réservé aux administrateurs")
+     * )
+     */
+    public function show(): JsonResponse
+    {
+        try {
+            $detail = $this->getSalonAction->execute();
+
+            return new JsonResponse([
+                'success' => true,
+                'message' => 'Salon récupéré avec succès',
+                'data' => new SalonDetailResource($detail),
+            ], Response::HTTP_OK);
+        } catch (Exception $e) {
+            Log::error('Erreur récupération salon: '.$e->getMessage());
+
+            return new JsonResponse([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], Response::HTTP_NOT_FOUND);
+        }
+    }
+
+    /**
+     * @OA\Put(
+     *     path="/api/v1/salon",
+     *     summary="Modifier le profil du salon",
+     *     operationId="updateSalon",
+     *     tags={"Salon"},
+     *     security={{"bearerAuth":{}}},
+     *
+     *     @OA\RequestBody(
+     *         required=true,
+     *
+     *         @OA\JsonContent(
+     *
+     *             @OA\Property(property="name", type="string", example="Salon Koffi Cocody"),
+     *             @OA\Property(property="phone", type="string", example="2250708112233"),
+     *             @OA\Property(property="whatsapp_number", type="string", example="2250708112233"),
+     *             @OA\Property(property="city", type="string", example="Abidjan"),
+     *             @OA\Property(property="address", type="string", example="Cocody, Rue des jardins")
+     *         )
+     *     ),
+     *
+     *     @OA\Response(response=200, description="Salon mis à jour avec succès"),
+     *     @OA\Response(response=422, description="Données invalides"),
+     *     @OA\Response(response=403, description="Accès réservé aux administrateurs")
+     * )
+     */
+    public function update(UpdateSalonRequest $request): JsonResponse
+    {
+        try {
+            $detail = $this->updateSalonAction->execute(UpdateSalonData::fromRequest($request));
+
+            return new JsonResponse([
+                'success' => true,
+                'message' => 'Salon mis à jour avec succès',
+                'data' => new SalonDetailResource($detail),
+            ], Response::HTTP_OK);
+        } catch (Exception $e) {
+            Log::error('Erreur mise à jour salon: '.$e->getMessage());
+
+            return new JsonResponse([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], Response::HTTP_BAD_REQUEST);
+        }
+    }
+
+    /**
+     * @OA\Post(
+     *     path="/api/v1/salon/logo",
+     *     summary="Upload du logo du salon",
+     *     operationId="uploadSalonLogo",
+     *     tags={"Salon"},
+     *     security={{"bearerAuth":{}}},
+     *
+     *     @OA\RequestBody(
+     *         required=true,
+     *
+     *         @OA\MediaType(
+     *             mediaType="multipart/form-data",
+     *
+     *             @OA\Schema(
+     *                 required={"logo"},
+     *
+     *                 @OA\Property(property="logo", type="string", format="binary")
+     *             )
+     *         )
+     *     ),
+     *
+     *     @OA\Response(response=200, description="Logo uploadé avec succès"),
+     *     @OA\Response(response=422, description="Fichier invalide"),
+     *     @OA\Response(response=403, description="Accès réservé aux administrateurs")
+     * )
+     */
+    /**
+     * @OA\Get(
+     *     path="/api/v1/salon/booking-qr",
+     *     summary="QR code PNG de réservation du salon",
+     *     description="Encode le même lien que booking_link. Nécessite l'extension PHP imagick.",
+     *     operationId="getSalonBookingQrCode",
+     *     tags={"Salon"},
+     *     security={{"bearerAuth":{}}},
+     *
+     *     @OA\Response(
+     *         response=200,
+     *         description="Image PNG",
+     *
+     *         @OA\MediaType(
+     *             mediaType="image/png",
+     *
+     *             @OA\Schema(type="string", format="binary")
+     *         )
+     *     ),
+     *
+     *     @OA\Response(response=403, description="Accès réservé aux administrateurs")
+     * )
+     */
+    public function bookingQr(): Response
+    {
+        try {
+            $salon = $this->salonContext->resolveAuthenticatedSalon();
+            $png = $this->bookingQrCodeService->generatePng($salon->slug);
+
+            return new Response($png, Response::HTTP_OK, [
+                'Content-Type' => 'image/png',
+                'Content-Disposition' => 'inline; filename="booking-qr-'.$salon->slug.'.png"',
+            ]);
+        } catch (Exception $e) {
+            Log::error('Erreur génération QR salon: '.$e->getMessage());
+
+            return new Response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR, [
+                'Content-Type' => 'text/plain',
+            ]);
+        }
+    }
+
+    public function uploadLogo(UploadSalonLogoRequest $request): JsonResponse
+    {
+        try {
+            $detail = $this->uploadSalonLogoAction->execute($request->file('logo'));
+
+            return new JsonResponse([
+                'success' => true,
+                'message' => 'Logo uploadé avec succès',
+                'data' => new SalonDetailResource($detail),
+            ], Response::HTTP_OK);
+        } catch (Exception $e) {
+            Log::error('Erreur upload logo salon: '.$e->getMessage());
+
+            return new JsonResponse([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+}

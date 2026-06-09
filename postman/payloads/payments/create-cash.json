@@ -1,0 +1,5 @@
+{
+  "appointment_id": "{{appointment_id}}",
+  "amount": 2000,
+  "method": "cash"
+}

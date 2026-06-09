@@ -1,0 +1,63 @@
+{
+  "description": "Index des payloads Salono pour Postman. Importer Salono.postman_collection.json + environment.local.json depuis le dossier postman/.",
+  "base_url": "{{base_url}}",
+  "payloads": {
+    "auth": {
+      "POST /v1/auth/register": "payloads/auth/register.json",
+      "POST /v1/auth/login": "payloads/auth/login.json",
+      "POST /v1/auth/verify-otp": "payloads/auth/verify-otp.json",
+      "POST /v1/auth/resend-otp": "payloads/auth/resend-otp.json",
+      "POST /v1/auth/forgot-password": "payloads/auth/forgot-password.json",
+      "POST /v1/auth/verify-reset-code": "payloads/auth/verify-reset-code.json",
+      "POST /v1/auth/reset-password": "payloads/auth/reset-password.json"
+    },
+    "salon": {
+      "PUT /v1/salon": "payloads/salon/update.json"
+    },
+    "users": {
+      "POST /v1/users (stylist)": "payloads/users/create-stylist.json",
+      "POST /v1/users (receptionist)": "payloads/users/create-receptionist.json",
+      "PUT /v1/users/{id}": "payloads/users/update.json"
+    },
+    "services": {
+      "POST /v1/services": "payloads/services/create.json",
+      "PUT /v1/services/{id}": "payloads/services/update.json"
+    },
+    "clients": {
+      "POST /v1/clients": "payloads/clients/create.json",
+      "PUT /v1/clients/{id}": "payloads/clients/update.json"
+    },
+    "appointments": {
+      "POST /v1/appointments": "payloads/appointments/create.json",
+      "PUT /v1/appointments/{id}/status → confirmed": "payloads/appointments/update-status-confirmed.json",
+      "PUT /v1/appointments/{id}/status → completed": "payloads/appointments/update-status-completed.json",
+      "PUT /v1/appointments/{id}/status → cancelled": "payloads/appointments/update-status-cancelled.json"
+    },
+    "payments": {
+      "POST /v1/payments (cash)": "payloads/payments/create-cash.json",
+      "POST /v1/payments (mobile_money)": "payloads/payments/create-mobile-money.json"
+    },
+    "booking": {
+      "POST /booking/{slug}": "payloads/booking/create.json"
+    },
+    "webhook": {
+      "POST /webhook/whatsapp — premier message RDV": "payloads/webhook/meta-incoming-rdv.json",
+      "POST /webhook/whatsapp — choix prestation": "payloads/webhook/meta-incoming-choose-service.json",
+      "POST /webhook/whatsapp — confirmation oui": "payloads/webhook/meta-incoming-confirm-oui.json",
+      "POST /webhook/whatsapp — statut livré (ignoré)": "payloads/webhook/meta-status-delivered.json"
+    }
+  },
+  "enums": {
+    "city": ["Abidjan", "Bouaké", "Yamoussoukro", "Daloa", "San-Pédro", "Korhogo", "Man", "Gagnoa", "Abengourou", "Divo"],
+    "employee_role": ["manager", "stylist", "receptionist"],
+    "appointment_status": ["pending", "confirmed", "in_progress", "completed", "cancelled", "no_show"],
+    "payment_method": ["cash", "mobile_money", "card"]
+  },
+  "variables_a_remplir": {
+    "client_id": "UUID depuis GET /v1/clients ou POST create",
+    "user_id": "UUID coiffeur depuis GET /v1/users ou GET /booking/{slug}",
+    "service_id": "UUID depuis GET /v1/services ou GET /booking/{slug}",
+    "appointment_id": "UUID depuis POST appointment ou booking",
+    "scheduled_at": "ISO8601 futur — adapter dans booking/create.json et appointments/create.json"
+  }
+}

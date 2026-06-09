@@ -1,0 +1,17 @@
+{
+  "id": "salono-local-env",
+  "name": "Salono — Local",
+  "values": [
+    { "key": "base_url", "value": "http://localhost:8000/api", "type": "default", "enabled": true },
+    { "key": "token", "value": "", "type": "secret", "enabled": true },
+    { "key": "salon_slug", "value": "salon-koffi-cocody", "type": "default", "enabled": true },
+    { "key": "client_id", "value": "", "type": "default", "enabled": true },
+    { "key": "user_id", "value": "", "type": "default", "enabled": true },
+    { "key": "service_id", "value": "", "type": "default", "enabled": true },
+    { "key": "appointment_id", "value": "", "type": "default", "enabled": true },
+    { "key": "employee_id", "value": "", "type": "default", "enabled": true },
+    { "key": "whatsapp_verify_token", "value": "mon_token_secret_verification", "type": "default", "enabled": true },
+    { "key": "whatsapp_app_secret", "value": "", "type": "secret", "enabled": true }
+  ],
+  "_postman_variable_scope": "environment"
+}

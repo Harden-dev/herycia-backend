@@ -1,0 +1,73 @@
+<?php
+
+namespace App\Http\Requests\V1\Client;
+
+use App\Support\IvoryCoastPhone;
+use Illuminate\Contracts\Validation\Validator;
+use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Validation\Rule;
+use Symfony\Component\HttpFoundation\Response;
+
+class CreateSalonClientRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return true;
+    }
+
+    public function rules(): array
+    {
+        $salonId = auth('api')->user()?->salon_id;
+
+        return [
+            'name' => ['required', 'string', 'min:2', 'max:100'],
+            'phone' => [
+                'required',
+                'string',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    if (! IvoryCoastPhone::isValid((string) $value)) {
+                        $fail('Le format du numéro de téléphone est invalide.');
+                    }
+                },
+                Rule::unique('clients', 'phone')->where('salon_id', $salonId),
+            ],
+            'whatsapp_id' => ['nullable', 'string', 'max:255'],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'name.required' => 'Le nom est obligatoire.',
+            'phone.required' => 'Le numéro de téléphone est obligatoire.',
+            'phone.unique' => 'Ce numéro de téléphone est déjà enregistré pour un client de ce salon.',
+        ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $payload = [];
+
+        if ($this->has('name') && is_string($this->input('name'))) {
+            $payload['name'] = trim($this->input('name'));
+        }
+
+        if ($this->has('phone') && is_string($this->input('phone'))) {
+            $payload['phone'] = IvoryCoastPhone::normalize($this->input('phone'));
+        }
+
+        if ($payload !== []) {
+            $this->merge($payload);
+        }
+    }
+
+    protected function failedValidation(Validator $validator): void
+    {
+        throw new HttpResponseException(response()->json([
+            'success' => false,
+            'message' => 'Les données fournies sont invalides.',
+            'errors' => $validator->errors(),
+        ], Response::HTTP_UNPROCESSABLE_ENTITY));
+    }
+}

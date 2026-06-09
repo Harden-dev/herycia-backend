@@ -1,0 +1,7 @@
+{
+  "client_phone": "2250708112233",
+  "client_name": "Koffi Client",
+  "service_id": "{{service_id}}",
+  "user_id": "{{user_id}}",
+  "scheduled_at": "2026-05-24T10:00:00+00:00"
+}

@@ -1,0 +1,6 @@
+{
+  "appointment_id": "{{appointment_id}}",
+  "amount": 3500,
+  "method": "mobile_money",
+  "mobile_money_ref": "MM-20260524-001234"
+}
