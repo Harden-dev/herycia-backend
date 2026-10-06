@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 #[ObservedBy([AppointmentObserver::class])]
 class Appointment extends Model
@@ -28,12 +29,16 @@ class Appointment extends Model
         'status',
         'tracking_token',
         'notes',
+        'checked_in_at',
+        'rescheduled_from',
     ];
 
     protected function casts(): array
     {
         return [
             'scheduled_at' => 'datetime',
+            'checked_in_at' => 'datetime',
+            'rescheduled_from' => 'datetime',
             'status' => AppointmentStatus::class,
         ];
     }
@@ -61,5 +66,10 @@ class Appointment extends Model
     public function payments(): HasMany
     {
         return $this->hasMany(Payment::class);
+    }
+
+    public function queueEntry(): HasOne
+    {
+        return $this->hasOne(QueueEntry::class);
     }
 }

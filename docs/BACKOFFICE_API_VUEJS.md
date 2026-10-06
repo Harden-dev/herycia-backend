@@ -761,6 +761,85 @@ Parfait pour widgets dashboard (jour / semaine / mois).
 
 ---
 
+# 8 bis. File d'attente (V1)
+
+Principe : un client avec rendez-vous **s'enregistre en arrivant** en scannant le QR d'accueil du salon. La file est **par coiffeur**. La position et l'heure de passage sont **calculées** à chaque lecture : client en cours, puis clients appelés, puis clients à l'heure (à l'heure de leur RDV), et les retardataires comblent les trous.
+
+**Retard** : au-delà de la tolérance (15 min par défaut), rien n'est enregistré. Le client choisit :
+- `reschedule` : **même heure, un autre jour**. C'est le prochain jour ouvert où le coiffeur est libre à cette heure, dans les 30 jours.
+- `queue` : **après le dernier de la liste**, si sa prestation se termine avant la fermeture.
+
+## Public (sans JWT)
+
+| Méthode | Route | Body | Réponse `data` |
+|---|---|---|---|
+| POST | `/checkin/{slug}` | `{ key, phone }` ou `{ key, tracking_token }` | `{ status: "queued", entry }` ou `{ status: "late", late_tolerance_minutes, appointment, options: { reschedule: { scheduled_at } \| null, queue: { position, people_ahead, estimated_start_at } \| null } }` |
+| POST | `/checkin/{slug}/late-choice` | `{ key, tracking_token, choice: "reschedule" \| "queue" }` | `{ status: "queued", entry }` ou `{ status: "rescheduled", appointment }` |
+| GET | `/file/{token}` | — | `entry` : `{ status, source, position, people_ahead, estimated_start_at, client: { name }, service, stylist: { name }, salon }` |
+
+- `key` : clé contenue dans le QR d'arrivée (`/arrivee/{slug}?k=...`), qui prouve la présence au salon.
+- Codes d'erreur (`code`) :
+  - `invalid_checkin_key` (403) ;
+  - `appointment_not_found` (404) ;
+  - `appointment_not_today` et `appointment_closed` (409) ;
+  - `no_same_time_slot` et `queue_full` (409) ;
+  - `subscription_inactive` (403).
+- Statuts d'une entrée : `waiting`, `called`, `in_service`, `done`, `cancelled`. `position` vaut 0 pour le client en cours.
+- Rafraîchir le suivi toutes les 20 à 30 s (limite : 60 requêtes/min).
+
+## Back-office (JWT)
+
+| Méthode | Route | Rôle | Description |
+|---|---|---|---|
+| GET | `/v1/queue/board` | personnel | `{ late_tolerance_minutes, stylists: [{ id, name, queue: [ligne], expected: [rdv du jour non arrivés avec is_late] }] }` |
+| POST | `/v1/queue/check-in` | personnel | `{ appointment_id }` : même réponse que l'arrivée publique |
+| POST | `/v1/queue/check-in/late-choice` | personnel | `{ appointment_id, choice }` |
+| PATCH | `/v1/queue/{id}/{action}` | personnel | `action` parmi `call`, `start`, `done`, `no-show`, `cancel` |
+| GET | `/v1/salon/checkin-qr` | admin | `{ checkin_url, qr_code (data URI), late_tolerance_minutes }`, clé créée au premier appel |
+| POST | `/v1/salon/checkin-qr/regenerate` | admin | Nouvelle clé : l'ancien QR ne fonctionne plus |
+
+Transitions autorisées :
+- `call` : depuis `waiting` ;
+- `start` : depuis `waiting` ou `called`, et un seul client en cours par coiffeur (`stylist_busy`, 409) ;
+- `done` : depuis `in_service` ;
+- `no-show` et `cancel` : depuis `waiting` ou `called`.
+
+Effets sur le rendez-vous lié :
+- `start` le passe en `in_progress` ;
+- `done` le passe en `completed` (une visite comptée) ;
+- `no-show` le passe en `no_show` ;
+- `cancel` le passe en `cancelled`.
+
+---
+
+## V2
+
+### Clients sans rendez-vous
+Un client sans rendez-vous choisit une prestation, puis un coiffeur ou « premier disponible ». Il est placé **après le dernier de la liste**, comme un retardataire (`source: "walk_in"`).
+
+| Méthode | Route | Description |
+|---|---|---|
+| GET | `/checkin/{slug}/walk-in?key=…&service_id=…` | `{ salon, services: [{ id, name, duration_min, price }], options }`. `options` vaut `null` sans `service_id`, sinon `{ first_available: { stylist, position, estimated_start_at } \| null, stylists: [{ stylist, position, people_ahead, estimated_start_at, available }] }` |
+| POST | `/checkin/{slug}/walk-in` | `{ key, service_id, stylist_id? (absent = premier disponible), name, phone }` renvoie `{ status: "queued", entry }`. Un même numéro garde sa place, et une fiche client existante n'est jamais renommée. |
+| GET | `/v1/queue/walk-in-options?service_id=…` | Version accueil (JWT) des options |
+| POST | `/v1/queue/walk-in` | Version accueil : `{ service_id, stylist_id?, name, phone }` |
+
+Erreurs : `queue_full` (409, plus de place avant la fermeture), `invalid_service`, `invalid_stylist`, `invalid_phone` (422).
+
+### Réaffectation
+`PATCH /v1/queue/{id}/reassign` avec `{ stylist_id }` confie à un autre coiffeur un client en attente ou appelé. Le client repasse en attente et le rendez-vous lié change de coiffeur.
+
+### Absents automatiques
+Toutes les 5 min, `queue:mark-no-shows` passe en `no_show` les rendez-vous **du jour** jamais arrivés, une fois dépassé le délai (`QUEUE_AUTO_NO_SHOW_AFTER_MINUTES`, 60 par défaut). Le client peut encore arriver dans la journée : il est traité comme un retardataire, et son rendez-vous redevient `confirmed`. Le tableau `/v1/queue/board` les affiche toujours dans `expected`, avec `status: "no_show"`.
+
+### SMS « c'est bientôt votre tour »
+Chaque minute, `queue:notify-soon` envoie **un seul** SMS au prochain client de chaque coiffeur, ou à celui dont le passage est estimé dans les 10 min (`QUEUE_SOON_NOTIFY_MINUTES`). L'envoi respecte le plafond SMS du salon.
+
+### Tolérance de retard
+`PUT /v1/salon` accepte `late_tolerance_minutes`, entier de 0 à 60. La valeur est renvoyée par `GET /v1/salon`.
+
+---
+
 # 9. Flux Vue.js recommandés
 
 ## Bootstrap app
