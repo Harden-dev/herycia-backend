@@ -29,6 +29,7 @@ class QueueEntry extends Model
         'priority_at',
         'started_at',
         'tracking_token',
+        'soon_notified_at',
     ];
 
     protected function casts(): array
@@ -42,6 +43,7 @@ class QueueEntry extends Model
             'source' => QueueEntrySource::class,
             'priority_at' => 'datetime',
             'started_at' => 'datetime',
+            'soon_notified_at' => 'datetime',
         ];
     }
 

@@ -13,3 +13,7 @@ Artisan::command('inspire', function () {
 
 // Filet de sécurité Paystack : confirme les paiements dont ni le callback ni le webhook ne sont arrivés.
 Schedule::command('paystack:reconcile')->everyFifteenMinutes()->withoutOverlapping();
+
+// File d'attente : absents automatiques et SMS « c'est bientôt votre tour ».
+Schedule::command('queue:mark-no-shows')->everyFiveMinutes()->withoutOverlapping();
+Schedule::command('queue:notify-soon')->everyMinute()->withoutOverlapping();

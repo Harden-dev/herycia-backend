@@ -4,9 +4,11 @@ namespace App\Services\Queue;
 
 use App\Enums\AppointmentStatus;
 use App\Enums\QueueEntryStatus;
+use App\Enums\SalonStaffRole;
 use App\Models\Appointment;
 use App\Models\Client;
 use App\Models\QueueEntry;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -81,6 +83,53 @@ class QueueActionService
             };
 
             $this->syncAppointment($entry, $action);
+
+            return $entry->refresh()->load(['client', 'service', 'staff', 'appointment']);
+        });
+    }
+
+    /**
+     * Confie un client en attente (ou appelé) à un autre coiffeur actif, par exemple quand le sien
+     * s'absente. Il reprend l'attente chez le nouveau coiffeur ; le rendez-vous lié suit.
+     */
+    public function reassign(string $salonId, string $entryId, string $stylistId): QueueEntry
+    {
+        return DB::transaction(function () use ($salonId, $entryId, $stylistId): QueueEntry {
+            $stylist = User::query()
+                ->where('salon_id', $salonId)
+                ->whereKey($stylistId)
+                ->where('role', SalonStaffRole::Stylist)
+                ->where('is_active', true)
+                ->lockForUpdate()
+                ->first();
+
+            if ($stylist === null) {
+                throw new QueueException('Coiffeur invalide pour ce salon.', 422, 'invalid_stylist');
+            }
+
+            $entry = QueueEntry::query()->where('salon_id', $salonId)->whereKey($entryId)->lockForUpdate()->first();
+
+            if ($entry === null) {
+                throw new QueueException('Entrée de file introuvable.', 404, 'queue_entry_not_found');
+            }
+
+            if (! in_array($entry->status, [QueueEntryStatus::Waiting, QueueEntryStatus::Called], true)) {
+                throw new QueueException('Seul un client en attente peut changer de coiffeur.', 409, 'invalid_transition');
+            }
+
+            if ($entry->user_id !== $stylist->id) {
+                $entry->update([
+                    'user_id' => $stylist->id,
+                    'status' => QueueEntryStatus::Waiting,
+                    'called_at' => null,
+                    // Nouvelle file, nouveau calcul : le SMS « bientôt » pourra repartir.
+                    'soon_notified_at' => null,
+                ]);
+
+                if ($entry->appointment_id !== null) {
+                    Appointment::query()->whereKey($entry->appointment_id)->update(['user_id' => $stylist->id]);
+                }
+            }
 
             return $entry->refresh()->load(['client', 'service', 'staff', 'appointment']);
         });

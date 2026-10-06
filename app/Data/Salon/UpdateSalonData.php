@@ -12,6 +12,7 @@ readonly class UpdateSalonData
         public ?string $whatsappNumber = null,
         public ?string $city = null,
         public ?string $address = null,
+        public ?int $lateToleranceMinutes = null,
     ) {}
 
     public static function fromRequest(UpdateSalonRequest $request): self
@@ -22,6 +23,7 @@ readonly class UpdateSalonData
             whatsappNumber: $request->filled('whatsapp_number') ? $request->string('whatsapp_number')->toString() : null,
             city: $request->filled('city') ? $request->string('city')->toString() : null,
             address: $request->filled('address') ? $request->string('address')->trim()->toString() : null,
+            lateToleranceMinutes: $request->filled('late_tolerance_minutes') ? $request->integer('late_tolerance_minutes') : null,
         );
     }
 
@@ -34,6 +36,7 @@ readonly class UpdateSalonData
             'whatsapp_number' => $this->whatsappNumber,
             'city' => $this->city,
             'address' => $this->address,
+            'late_tolerance_minutes' => $this->lateToleranceMinutes,
         ], fn (mixed $value) => $value !== null);
     }
 }

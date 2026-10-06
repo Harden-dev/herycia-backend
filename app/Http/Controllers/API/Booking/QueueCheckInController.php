@@ -5,9 +5,11 @@ namespace App\Http\Controllers\API\Booking;
 use App\Http\Controllers\Controller;
 use App\Models\QueueEntry;
 use App\Models\Salon;
+use App\Models\Service;
 use App\Repositories\Contracts\SubscriptionRepositoryInterface;
 use App\Services\Queue\QueueCheckInService;
 use App\Services\Queue\QueueException;
+use App\Services\Queue\QueueWalkInService;
 use App\Services\Subscription\SubscriptionAccessService;
 use App\Support\Queue\QueuePresenter;
 use Illuminate\Http\JsonResponse;
@@ -26,6 +28,7 @@ class QueueCheckInController extends Controller
 {
     public function __construct(
         private QueueCheckInService $checkInService,
+        private QueueWalkInService $walkInService,
         private QueuePresenter $presenter,
         private SubscriptionRepositoryInterface $subscriptionRepository,
         private SubscriptionAccessService $subscriptionAccess,
@@ -63,6 +66,66 @@ class QueueCheckInController extends Controller
                 $this->checkInService->chooseLate($appointment, $salon, $data['choice']),
                 $salon,
             );
+        });
+    }
+
+    /**
+     * Client sans rendez-vous : prestations du salon et, si une prestation est choisie,
+     * estimation par coiffeur et proposition « premier coiffeur disponible ».
+     */
+    public function walkInOptions(Request $request, string $slug): JsonResponse
+    {
+        $data = $request->validate([
+            'key' => ['required', 'string', 'max:64'],
+            'service_id' => ['nullable', 'uuid'],
+        ]);
+
+        return $this->handle(function () use ($slug, $data) {
+            $salon = $this->resolveSalon($slug, $data['key']);
+
+            $services = Service::query()
+                ->where('salon_id', $salon->id)
+                ->where('is_active', true)
+                ->orderBy('name')
+                ->get(['id', 'name', 'duration_min', 'price']);
+
+            $options = null;
+
+            if (! empty($data['service_id'])) {
+                $service = $this->walkInService->findService($salon, $data['service_id']);
+                $options = $this->presenter->walkInOptions($this->walkInService->options($salon, $service));
+            }
+
+            return [
+                'salon' => ['name' => $salon->name, 'slug' => $salon->slug],
+                'services' => $services->map(fn (Service $s) => [
+                    'id' => $s->id,
+                    'name' => $s->name,
+                    'duration_min' => $s->duration_min,
+                    'price' => $s->price,
+                ])->values()->all(),
+                'options' => $options,
+            ];
+        });
+    }
+
+    /** Client sans rendez-vous : rejoint la file (coiffeur choisi ou premier disponible). */
+    public function walkIn(Request $request, string $slug): JsonResponse
+    {
+        $data = $request->validate([
+            'key' => ['required', 'string', 'max:64'],
+            'service_id' => ['required', 'uuid'],
+            'stylist_id' => ['nullable', 'uuid'],
+            'name' => ['required', 'string', 'min:2', 'max:100'],
+            'phone' => ['required', 'string', 'max:20'],
+        ]);
+
+        return $this->handle(function () use ($slug, $data) {
+            $salon = $this->resolveSalon($slug, $data['key']);
+            $service = $this->walkInService->findService($salon, $data['service_id']);
+            $entry = $this->walkInService->join($salon, $service, $data['stylist_id'] ?? null, $data['name'], $data['phone']);
+
+            return ['status' => 'queued', 'entry' => $this->presenter->publicEntry($entry)];
         });
     }
 

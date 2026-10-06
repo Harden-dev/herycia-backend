@@ -107,7 +107,34 @@ class QueuePresenter
         ];
     }
 
-    /** Rendez-vous du jour pas encore arrivé (back-office). */
+    /**
+     * Options d'un client sans rendez-vous : estimation par coiffeur et choix « premier disponible ».
+     *
+     * @param  array{stylists: list<array>, best_stylist_id: string|null}  $options
+     */
+    public function walkInOptions(array $options): array
+    {
+        $best = collect($options['stylists'])->firstWhere('stylist.id', $options['best_stylist_id']);
+
+        return [
+            'first_available' => $best !== null
+                ? [
+                    'stylist' => ['id' => $best['stylist']->id, 'name' => $best['stylist']->name],
+                    'position' => $best['position'],
+                    'estimated_start_at' => $this->iso($best['estimated_start_at']),
+                ]
+                : null,
+            'stylists' => array_map(fn (array $o) => [
+                'stylist' => ['id' => $o['stylist']->id, 'name' => $o['stylist']->name],
+                'position' => $o['position'],
+                'people_ahead' => $o['people_ahead'],
+                'estimated_start_at' => $this->iso($o['estimated_start_at']),
+                'available' => $o['available'],
+            ], $options['stylists']),
+        ];
+    }
+
+        /** Rendez-vous du jour pas encore arrivé (back-office). */
     public function expectedAppointment(Appointment $appointment, Salon $salon): array
     {
         return [

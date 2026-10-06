@@ -11,6 +11,7 @@ use App\Services\Queue\QueueActionService;
 use App\Services\Queue\QueueCheckInService;
 use App\Services\Queue\QueueException;
 use App\Services\Queue\QueueService;
+use App\Services\Queue\QueueWalkInService;
 use App\Services\Salon\SalonContextService;
 use App\Support\Queue\QueuePresenter;
 use Illuminate\Http\Request;
@@ -37,6 +38,7 @@ class QueueController extends Controller
         private QueueService $queueService,
         private QueueCheckInService $checkInService,
         private QueueActionService $actionService,
+        private QueueWalkInService $walkInService,
         private QueuePresenter $presenter,
     ) {}
 
@@ -91,9 +93,10 @@ class QueueController extends Controller
                 ->orderBy('name')
                 ->get();
 
+            // Inclut les « absents » posés automatiquement : ils peuvent encore arriver aujourd'hui.
             $expected = Appointment::query()
                 ->where('salon_id', $salon->id)
-                ->whereIn('status', [AppointmentStatus::Pending, AppointmentStatus::Confirmed])
+                ->whereIn('status', [AppointmentStatus::Pending, AppointmentStatus::Confirmed, AppointmentStatus::NoShow])
                 ->whereNull('checked_in_at')
                 ->whereBetween('scheduled_at', [now()->startOfDay(), now()->endOfDay()])
                 ->with(['client', 'service'])
@@ -148,6 +151,56 @@ class QueueController extends Controller
                 $this->checkInService->chooseLate($appointment, $salon, $data['choice']),
                 $salon,
             );
+        });
+    }
+
+    /** Options pour un client sans rendez-vous saisi à l'accueil. */
+    public function walkInOptions(Request $request): JsonResponse
+    {
+        $data = $request->validate(['service_id' => ['required', 'uuid']]);
+
+        return $this->handle(function () use ($data) {
+            $salon = $this->salonContext->resolveAuthenticatedSalon();
+            $service = $this->walkInService->findService($salon, $data['service_id']);
+
+            return $this->presenter->walkInOptions($this->walkInService->options($salon, $service));
+        });
+    }
+
+    /** Ajoute à la file un client sans rendez-vous présent à l'accueil. */
+    public function walkIn(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'service_id' => ['required', 'uuid'],
+            'stylist_id' => ['nullable', 'uuid'],
+            'name' => ['required', 'string', 'min:2', 'max:100'],
+            'phone' => ['required', 'string', 'max:20'],
+        ]);
+
+        return $this->handle(function () use ($data) {
+            $salon = $this->salonContext->resolveAuthenticatedSalon();
+            $service = $this->walkInService->findService($salon, $data['service_id']);
+            $entry = $this->walkInService->join($salon, $service, $data['stylist_id'] ?? null, $data['name'], $data['phone']);
+
+            return ['status' => 'queued', 'entry' => $this->presenter->publicEntry($entry)];
+        });
+    }
+
+    /** Confie un client en attente à un autre coiffeur. */
+    public function reassign(Request $request, string $id): JsonResponse
+    {
+        $data = $request->validate(['stylist_id' => ['required', 'uuid']]);
+
+        return $this->handle(function () use ($id, $data) {
+            $salon = $this->salonContext->resolveAuthenticatedSalon();
+            $entry = $this->actionService->reassign($salon->id, $id, $data['stylist_id']);
+            $estimate = $this->queueService->estimateForEntry($entry);
+
+            return $this->presenter->boardRow([
+                'entry' => $entry,
+                'position' => $estimate['position'],
+                'estimated_start_at' => $estimate['estimated_start_at'],
+            ]);
         });
     }
 

@@ -812,6 +812,34 @@ Effets sur le rendez-vous lié :
 
 ---
 
+## V2
+
+### Clients sans rendez-vous
+Un client sans rendez-vous choisit une prestation, puis un coiffeur ou « premier disponible ». Il est placé **après le dernier de la liste**, comme un retardataire (`source: "walk_in"`).
+
+| Méthode | Route | Description |
+|---|---|---|
+| GET | `/checkin/{slug}/walk-in?key=…&service_id=…` | `{ salon, services: [{ id, name, duration_min, price }], options }`. `options` vaut `null` sans `service_id`, sinon `{ first_available: { stylist, position, estimated_start_at } \| null, stylists: [{ stylist, position, people_ahead, estimated_start_at, available }] }` |
+| POST | `/checkin/{slug}/walk-in` | `{ key, service_id, stylist_id? (absent = premier disponible), name, phone }` renvoie `{ status: "queued", entry }`. Un même numéro garde sa place, et une fiche client existante n'est jamais renommée. |
+| GET | `/v1/queue/walk-in-options?service_id=…` | Version accueil (JWT) des options |
+| POST | `/v1/queue/walk-in` | Version accueil : `{ service_id, stylist_id?, name, phone }` |
+
+Erreurs : `queue_full` (409, plus de place avant la fermeture), `invalid_service`, `invalid_stylist`, `invalid_phone` (422).
+
+### Réaffectation
+`PATCH /v1/queue/{id}/reassign` avec `{ stylist_id }` confie à un autre coiffeur un client en attente ou appelé. Le client repasse en attente et le rendez-vous lié change de coiffeur.
+
+### Absents automatiques
+Toutes les 5 min, `queue:mark-no-shows` passe en `no_show` les rendez-vous **du jour** jamais arrivés, une fois dépassé le délai (`QUEUE_AUTO_NO_SHOW_AFTER_MINUTES`, 60 par défaut). Le client peut encore arriver dans la journée : il est traité comme un retardataire, et son rendez-vous redevient `confirmed`. Le tableau `/v1/queue/board` les affiche toujours dans `expected`, avec `status: "no_show"`.
+
+### SMS « c'est bientôt votre tour »
+Chaque minute, `queue:notify-soon` envoie **un seul** SMS au prochain client de chaque coiffeur, ou à celui dont le passage est estimé dans les 10 min (`QUEUE_SOON_NOTIFY_MINUTES`). L'envoi respecte le plafond SMS du salon.
+
+### Tolérance de retard
+`PUT /v1/salon` accepte `late_tolerance_minutes`, entier de 0 à 60. La valeur est renvoyée par `GET /v1/salon`.
+
+---
+
 # 9. Flux Vue.js recommandés
 
 ## Bootstrap app

@@ -40,6 +40,8 @@ class UpdateSalonRequest extends FormRequest
             ],
             'city' => ['sometimes', 'string', Rule::in(SalonCity::values())],
             'address' => ['sometimes', 'nullable', 'string', 'max:255'],
+            // File d'attente : retard toléré avant que le client doive choisir (0 à 60 min)
+            'late_tolerance_minutes' => ['sometimes', 'integer', 'min:0', 'max:60'],
         ];
     }
 
@@ -52,6 +54,9 @@ class UpdateSalonRequest extends FormRequest
             'whatsapp_number.unique' => 'Ce numéro WhatsApp est déjà associé à un salon.',
             'city.in' => 'La ville sélectionnée est invalide.',
             'address.max' => 'L\'adresse ne peut pas dépasser 255 caractères.',
+            'late_tolerance_minutes.integer' => 'La tolérance de retard doit être un nombre de minutes.',
+            'late_tolerance_minutes.min' => 'La tolérance de retard ne peut pas être négative.',
+            'late_tolerance_minutes.max' => 'La tolérance de retard ne peut pas dépasser 60 minutes.',
         ];
     }
 

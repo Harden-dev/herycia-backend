@@ -56,7 +56,7 @@ class QueueCheckInService
 
             $appointment = $client === null ? null : (clone $query)
                 ->where('client_id', $client->id)
-                ->whereIn('status', [AppointmentStatus::Pending, AppointmentStatus::Confirmed, AppointmentStatus::InProgress])
+                ->whereIn('status', [AppointmentStatus::Pending, AppointmentStatus::Confirmed, AppointmentStatus::InProgress, AppointmentStatus::NoShow])
                 ->orderBy('scheduled_at')
                 ->first();
         } else {
@@ -186,7 +186,11 @@ class QueueCheckInService
     {
         $now = now();
 
-        $appointment->update(['checked_in_at' => $now]);
+        $appointment->update([
+            'checked_in_at' => $now,
+            // Absent automatique qui finit par arriver : le rendez-vous redevient actif.
+            'status' => $appointment->status === AppointmentStatus::NoShow ? AppointmentStatus::Confirmed : $appointment->status,
+        ]);
 
         return QueueEntry::query()->create([
             'salon_id' => $appointment->salon_id,
@@ -206,7 +210,11 @@ class QueueCheckInService
 
     private function assertCheckInPossible(Appointment $appointment): void
     {
-        if (! in_array($appointment->status, [AppointmentStatus::Pending, AppointmentStatus::Confirmed], true)) {
+        // « Absent » posé automatiquement (jamais arrivé) : le client peut encore arriver le jour même,
+        // il est alors traité comme un retardataire. Un absent posé par l'accueil (déjà arrivé) est définitif.
+        $autoNoShow = $appointment->status === AppointmentStatus::NoShow && $appointment->checked_in_at === null;
+
+        if (! $autoNoShow && ! in_array($appointment->status, [AppointmentStatus::Pending, AppointmentStatus::Confirmed], true)) {
             throw new QueueException('Ce rendez-vous ne peut plus être enregistré.', 409, 'appointment_closed');
         }
 

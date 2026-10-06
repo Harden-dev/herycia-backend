@@ -8,6 +8,7 @@ use App\Enums\QueueEntryStatus;
 use App\Models\Appointment;
 use App\Models\QueueEntry;
 use App\Models\Salon;
+use App\Models\User;
 use App\Repositories\Contracts\SalonScheduleRepositoryInterface;
 use App\Services\Booking\AppointmentAvailabilityService;
 use Carbon\Carbon;
@@ -109,17 +110,37 @@ class QueueService
      */
     public function previewLateJoin(Appointment $appointment, ?CarbonImmutable $now = null): ?array
     {
+        return $this->previewFloatingJoin(
+            $appointment->salon_id,
+            $appointment->user_id,
+            $appointment->service?->duration_min ?? self::DEFAULT_DURATION,
+            $now,
+            excludeAppointmentId: $appointment->id,
+        );
+    }
+
+    /**
+     * Aperçu d'un nouveau client placé après le dernier (retardataire ou sans rendez-vous).
+     *
+     * @return array{position: int, people_ahead: int, estimated_start_at: CarbonImmutable, fits_before_closing: bool}|null
+     */
+    public function previewFloatingJoin(
+        string $salonId,
+        string $stylistId,
+        int $durationMinutes,
+        ?CarbonImmutable $now = null,
+        ?string $excludeAppointmentId = null,
+    ): ?array {
         $now ??= CarbonImmutable::now();
-        $duration = $appointment->service?->duration_min ?? self::DEFAULT_DURATION;
-        $entries = $this->activeEntries($appointment->salon_id, $appointment->user_id, $now);
+        $entries = $this->activeEntries($salonId, $stylistId, $now);
 
         $estimates = $this->estimate(
             $entries,
-            $appointment->salon_id,
-            $appointment->user_id,
+            $salonId,
+            $stylistId,
             $now,
-            extraFloating: ['id' => self::PREVIEW_ID, 'priority_at' => $now, 'duration' => $duration],
-            excludeAppointmentId: $appointment->id,
+            extraFloating: ['id' => self::PREVIEW_ID, 'priority_at' => $now, 'duration' => $durationMinutes],
+            excludeAppointmentId: $excludeAppointmentId,
         );
 
         $preview = $estimates[self::PREVIEW_ID] ?? null;
@@ -132,8 +153,45 @@ class QueueService
             'position' => $preview['position'],
             'people_ahead' => $preview['position'] - 1,
             'estimated_start_at' => $preview['estimated_start_at'],
-            'fits_before_closing' => $this->fitsBeforeClosing($appointment->salon_id, $preview['estimated_end_at']),
+            'fits_before_closing' => $this->fitsBeforeClosing($salonId, $preview['estimated_end_at']),
         ];
+    }
+
+    /**
+     * Options d'un client sans rendez-vous : estimation pour chaque coiffeur actif, et le meilleur
+     * choix pour « premier coiffeur disponible » (passage le plus tôt avant la fermeture).
+     *
+     * @param  Collection<int, User>  $stylists
+     * @return array{stylists: list<array{stylist: User, position: int, people_ahead: int, estimated_start_at: CarbonImmutable, available: bool}>, best_stylist_id: string|null}
+     */
+    public function walkInOptions(string $salonId, Collection $stylists, int $durationMinutes, ?CarbonImmutable $now = null): array
+    {
+        $now ??= CarbonImmutable::now();
+        $options = [];
+        $best = null;
+
+        foreach ($stylists as $stylist) {
+            $preview = $this->previewFloatingJoin($salonId, $stylist->id, $durationMinutes, $now);
+
+            if ($preview === null) {
+                continue;
+            }
+
+            $options[] = [
+                'stylist' => $stylist,
+                'position' => $preview['position'],
+                'people_ahead' => $preview['people_ahead'],
+                'estimated_start_at' => $preview['estimated_start_at'],
+                'available' => $preview['fits_before_closing'],
+            ];
+
+            if ($preview['fits_before_closing']
+                && ($best === null || $preview['estimated_start_at']->lessThan($best['at']))) {
+                $best = ['id' => $stylist->id, 'at' => $preview['estimated_start_at']];
+            }
+        }
+
+        return ['stylists' => $options, 'best_stylist_id' => $best['id'] ?? null];
     }
 
     /**
@@ -213,7 +271,7 @@ class QueueService
                 ];
             } elseif ($entry->status === QueueEntryStatus::Called) {
                 $called[] = ['id' => $entry->id, 'duration' => $duration, 'called_at' => $entry->called_at];
-            } elseif ($entry->source === QueueEntrySource::Late) {
+            } elseif ($entry->source !== null && ! $entry->source->isAnchored()) {
                 $floating[] = ['id' => $entry->id, 'priority_at' => CarbonImmutable::instance($entry->priority_at ?? $entry->arrived_at), 'duration' => $duration];
             } else {
                 $anchored[] = ['id' => $entry->id, 'priority_at' => CarbonImmutable::instance($entry->priority_at ?? $entry->arrived_at), 'duration' => $duration];

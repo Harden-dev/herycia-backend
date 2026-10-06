@@ -18,5 +18,7 @@ Route::get('/rdv/{tracking_token}', [AppointmentTrackingController::class, 'show
 Route::prefix('checkin/{slug}')->middleware('throttle:public-checkin')->group(function () {
     Route::post('/', [QueueCheckInController::class, 'store']);
     Route::post('/late-choice', [QueueCheckInController::class, 'lateChoice']);
+    Route::get('/walk-in', [QueueCheckInController::class, 'walkInOptions']);
+    Route::post('/walk-in', [QueueCheckInController::class, 'walkIn']);
 });
 Route::get('/file/{token}', [QueueCheckInController::class, 'show'])->middleware('throttle:public-read');

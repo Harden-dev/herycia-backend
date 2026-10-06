@@ -108,6 +108,9 @@ Route::prefix('v1')->group(function () {
         Route::get('/queue/board', [QueueController::class, 'board']);
         Route::post('/queue/check-in', [QueueController::class, 'checkIn']);
         Route::post('/queue/check-in/late-choice', [QueueController::class, 'lateChoice']);
+        Route::get('/queue/walk-in-options', [QueueController::class, 'walkInOptions']);
+        Route::post('/queue/walk-in', [QueueController::class, 'walkIn']);
+        Route::patch('/queue/{id}/reassign', [QueueController::class, 'reassign']);
         Route::patch('/queue/{id}/{action}', [QueueController::class, 'action'])
             ->whereIn('action', QueueActionService::ACTIONS);
     });

@@ -25,6 +25,7 @@ class SalonDetailResource extends JsonResource
             'whatsapp_number' => $salon->whatsapp_number,
             'city' => $salon->city,
             'address' => $salon->address,
+            'late_tolerance_minutes' => $salon->late_tolerance_minutes ?? 15,
             'logo_url' => $detail->logoUrl,
             'is_active' => $salon->is_active,
             'booking_link' => app(PublicLinkService::class)->buildBookingLink($salon->slug),
