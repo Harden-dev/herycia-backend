@@ -27,11 +27,12 @@ class ResetPasswordActionTest extends TestCase
         Redis::shouldReceive('get')->with($tokenKey)->andReturn($tokenData);
         Redis::shouldReceive('del')->with($tokenKey)->once();
         Redis::shouldReceive('del')->with('otp:ratelimit:user@test.com')->once();
-        Redis::shouldReceive('del')->with('otp:registration:attempts:user@test.com')->once();
+        Redis::shouldReceive('del')->with('otp:password_reset:attempts:user@test.com')->once();
 
         $user = Mockery::mock(User::class)->makePartial();
         $user->id = 'user-uuid';
         $user->email = 'user@test.com';
+        $user->is_active = true;
         $user->shouldReceive('setAttribute')->with('password', Mockery::type('string'))->once();
         $user->shouldReceive('save')->once()->andReturn(true);
 

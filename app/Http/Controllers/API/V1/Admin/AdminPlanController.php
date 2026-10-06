@@ -45,7 +45,7 @@ class AdminPlanController extends Controller
 
             return new JsonResponse([
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => $this->safeMessage($e),
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
@@ -65,7 +65,7 @@ class AdminPlanController extends Controller
 
             return new JsonResponse([
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => $this->safeMessage($e),
             ], Response::HTTP_BAD_REQUEST);
         }
     }
@@ -85,7 +85,7 @@ class AdminPlanController extends Controller
 
             return new JsonResponse([
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => $this->safeMessage($e),
             ], Response::HTTP_NOT_FOUND);
         }
     }
@@ -105,7 +105,7 @@ class AdminPlanController extends Controller
 
             return new JsonResponse([
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => $this->safeMessage($e),
             ], Response::HTTP_BAD_REQUEST);
         }
     }
@@ -127,7 +127,7 @@ class AdminPlanController extends Controller
 
             return new JsonResponse([
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => $this->safeMessage($e),
             ], Response::HTTP_BAD_REQUEST);
         }
     }

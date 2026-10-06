@@ -21,7 +21,8 @@ class SimulateSubscriptionPaymentAction
 
     public function execute(BillingPaymentMethod $method, ?string $planCode = null): Subscription
     {
-        if (! config('salono.simulate_subscription_payments', true)) {
+        // Jamais en production, même si le flag est activé par erreur (audit C3).
+        if (! config('salono.simulate_subscription_payments', false) || app()->isProduction()) {
             throw new \RuntimeException('La simulation de paiement est désactivée.');
         }
 

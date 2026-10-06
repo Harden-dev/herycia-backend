@@ -111,7 +111,7 @@ class BookingController extends Controller
         } catch (PublicBookingException $e) {
             return new JsonResponse([
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => $this->safeMessage($e),
                 'code' => $e->errorCode(),
             ], $e->statusCode());
         } catch (\Exception $e) {
@@ -119,7 +119,7 @@ class BookingController extends Controller
 
             return new JsonResponse([
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => $this->safeMessage($e),
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
@@ -215,7 +215,7 @@ class BookingController extends Controller
         } catch (PublicBookingException $e) {
             return new JsonResponse([
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => $this->safeMessage($e),
                 'code' => $e->errorCode(),
             ], $e->statusCode());
         } catch (\Exception $e) {
@@ -223,7 +223,7 @@ class BookingController extends Controller
 
             return new JsonResponse([
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => $this->safeMessage($e),
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }

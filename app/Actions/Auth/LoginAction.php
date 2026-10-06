@@ -24,11 +24,8 @@ class LoginAction
 
         $token = $this->jwtService->createToken($user);
 
-        Log::info('User logged in successfully', [
-            'user_id' => $user->id,
-            'login' => $user->email ?? $user->phone,
-            'token' => $token,
-        ]);
+        // Ne jamais journaliser le JWT ni l'identifiant de connexion (audit H8).
+        Log::info('Token issued', ['user_id' => $user->id]);
 
         return [
             'user' => $user,

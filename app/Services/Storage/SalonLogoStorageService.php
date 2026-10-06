@@ -12,9 +12,22 @@ class SalonLogoStorageService
 
     private const FOLDER = 'logos';
 
+    /** Extension déduite du type MIME détecté côté serveur, jamais du nom envoyé par le client (audit H1). */
+    private const EXTENSIONS = [
+        'image/jpeg' => 'jpg',
+        'image/png' => 'png',
+        'image/webp' => 'webp',
+    ];
+
     public function upload(UploadedFile $file): string
     {
-        $filename = Str::uuid().'.'.$file->getClientOriginalExtension();
+        $extension = self::EXTENSIONS[$file->getMimeType()] ?? null;
+
+        if ($extension === null) {
+            throw new \RuntimeException('Format de logo non supporté.');
+        }
+
+        $filename = Str::uuid().'.'.$extension;
         $path = self::FOLDER.'/'.$filename;
 
         Storage::disk(self::DISK)->put($path, file_get_contents($file));

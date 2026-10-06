@@ -72,7 +72,7 @@ class AppointmentController extends Controller
 
             return new JsonResponse([
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => $this->safeMessage($e),
             ], Response::HTTP_BAD_REQUEST);
         }
     }
@@ -120,7 +120,7 @@ class AppointmentController extends Controller
 
             return new JsonResponse([
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => $this->safeMessage($e),
             ], Response::HTTP_BAD_REQUEST);
         }
     }
@@ -154,7 +154,7 @@ class AppointmentController extends Controller
 
             return new JsonResponse([
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => $this->safeMessage($e),
             ], Response::HTTP_NOT_FOUND);
         }
     }
@@ -201,7 +201,7 @@ class AppointmentController extends Controller
 
             return new JsonResponse([
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => $this->safeMessage($e),
             ], Response::HTTP_BAD_REQUEST);
         }
     }
@@ -235,7 +235,7 @@ class AppointmentController extends Controller
 
             return new JsonResponse([
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => $this->safeMessage($e),
             ], Response::HTTP_BAD_REQUEST);
         }
     }

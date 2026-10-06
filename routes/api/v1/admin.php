@@ -9,7 +9,7 @@ use App\Http\Controllers\API\V1\Admin\AdminSubscriptionController;
 use App\Http\Controllers\API\V1\Admin\AdminUserController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['jwt.auth', 'role.super_admin'])->prefix('admin')->group(function () {
+Route::middleware(['jwt.auth', 'throttle:api-user', 'role.super_admin'])->prefix('admin')->group(function () {
     Route::get('/stats/overview', [AdminStatsController::class, 'overview']);
     Route::get('/stats/salons-by-city', [AdminStatsController::class, 'salonsByCity']);
     Route::get('/me', [AdminMeController::class, 'me']);

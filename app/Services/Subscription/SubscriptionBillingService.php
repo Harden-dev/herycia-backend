@@ -73,11 +73,16 @@ class SubscriptionBillingService
         string $paymentReference,
         BillingPaymentMethod $method,
         ?Carbon $paidAt = null,
+        bool $enforceSubscriptionRules = true,
     ): Subscription {
         $paidAt ??= Carbon::now();
         $now = $paidAt;
 
-        $this->assertCanSubscribe($subscription, $targetPlan, $now);
+        // Un paiement déjà encaissé (Paystack) doit toujours être crédité : les règles
+        // ne s'appliquent qu'avant paiement (audit H4).
+        if ($enforceSubscriptionRules) {
+            $this->assertCanSubscribe($subscription, $targetPlan, $now);
+        }
 
         return DB::transaction(function () use ($salon, $subscription, $targetPlan, $amount, $paymentReference, $method, $now) {
             [$periodStart, $periodEnd] = $this->resolveBillingPeriod($subscription, $targetPlan, $now);

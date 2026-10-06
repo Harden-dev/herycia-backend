@@ -31,7 +31,7 @@ class AdminStatsController extends Controller
 
             return new JsonResponse([
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => $this->safeMessage($e),
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
@@ -51,7 +51,7 @@ class AdminStatsController extends Controller
 
             return new JsonResponse([
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => $this->safeMessage($e),
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }

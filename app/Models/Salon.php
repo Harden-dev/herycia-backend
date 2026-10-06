@@ -6,10 +6,11 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Salon extends Model
 {
-    use HasFactory, HasUuids;
+    use HasFactory, HasUuids, SoftDeletes;
 
     public const UPDATED_AT = null;
 
@@ -36,6 +37,12 @@ class Salon extends Model
     public function isSuspended(): bool
     {
         return $this->suspended_at !== null;
+    }
+
+    /** Salon utilisable par son personnel et pour la réservation publique (actif, non suspendu, non supprimé). */
+    public function isOperational(): bool
+    {
+        return $this->is_active && ! $this->isSuspended() && ! $this->trashed();
     }
 
     public function subscriptionPayments(): HasMany

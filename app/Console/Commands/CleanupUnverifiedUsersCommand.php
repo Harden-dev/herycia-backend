@@ -2,25 +2,20 @@
 
 namespace App\Console\Commands;
 
-use App\Models\User;
 use Illuminate\Console\Command;
 
 class CleanupUnverifiedUsersCommand extends Command
 {
     protected $signature = 'users:cleanup-unverified';
 
-    protected $description = 'Supprime les comptes non vérifiés depuis plus de 24 h';
+    protected $description = '[Désactivée] Ancienne purge des comptes non vérifiés';
 
     public function handle(): int
     {
-        $cutoff = now()->subHours(24);
-
-        $deleted = User::query()
-            ->where('is_active', false)
-            ->where('created_at', '<', $cutoff)
-            ->delete();
-
-        $this->info("Supprimé {$deleted} compte(s) non vérifié(s).");
+        // Désactivée (audit C4) : is_active = false désigne désormais des employés désactivés
+        // ou des comptes bloqués par le super admin. Les supprimer effaçait leur historique
+        // et échouait sur la contrainte appointments.user_id.
+        $this->warn('Commande désactivée : aucun compte n\'est supprimé (voir docs/AUDIT_SECURITE_ARCHITECTURE.md, C4).');
 
         return self::SUCCESS;
     }

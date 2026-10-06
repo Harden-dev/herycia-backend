@@ -43,8 +43,9 @@ class ForgotPasswordActionTest extends TestCase
             $decoded = json_decode($data, true);
             return str_contains($key, 'password_reset') && isset($decoded['code']) && $decoded['email'] === 'user@test.com';
         });
+        Redis::shouldReceive('del')->once()->with('otp:password_reset:attempts:user@test.com');
 
-        $user = new User(['email' => 'user@test.com']);
+        $user = new User(['email' => 'user@test.com', 'is_active' => true]);
         $userRepo = Mockery::mock(UserRepositoryInterface::class);
         $userRepo->shouldReceive('findByEmail')->with('user@test.com')->andReturn($user);
         $redis = Mockery::mock(RedisOtpService::class);
@@ -60,20 +61,39 @@ class ForgotPasswordActionTest extends TestCase
         $this->assertSame(10, $result['expires_in']);
     }
 
-    /** Échoue si rate limit dépassé. */
-    public function test_execute_throws_when_rate_limit_exceeded(): void
+    /** Rate limit dépassé : aucun envoi, mais réponse neutre identique (pas d'énumération). */
+    public function test_execute_returns_neutral_message_when_rate_limit_exceeded(): void
     {
-        $user = new User(['email' => 'user@test.com']);
+        Notification::fake();
+
+        $user = new User(['email' => 'user@test.com', 'is_active' => true]);
         $userRepo = Mockery::mock(UserRepositoryInterface::class);
         $userRepo->shouldReceive('findByEmail')->with('user@test.com')->andReturn($user);
+
         $redis = Mockery::mock(RedisOtpService::class);
         $redis->shouldReceive('checkRateLimit')->with('user@test.com')->andReturn(false);
+        $redis->shouldNotReceive('generateCode');
 
         $action = new ForgotPasswordAction($userRepo, $redis);
+        $result = $action->execute(new ForgotPasswordData('user@test.com'));
 
-        $this->expectException(\Exception::class);
-        $this->expectExceptionMessage('Trop de tentatives');
+        $this->assertStringContainsString('Si cet email existe', $result['message']);
+        Notification::assertNothingSent();
+    }
 
-        $action->execute(new ForgotPasswordData('user@test.com'));
+    /** Un compte désactivé ne reçoit pas de code, avec la même réponse neutre. */
+    public function test_execute_does_not_send_code_to_inactive_user(): void
+    {
+        $user = new User(['email' => 'user@test.com', 'is_active' => false]);
+        $userRepo = Mockery::mock(UserRepositoryInterface::class);
+        $userRepo->shouldReceive('findByEmail')->with('user@test.com')->andReturn($user);
+
+        $redis = Mockery::mock(RedisOtpService::class);
+        $redis->shouldNotReceive('generateCode');
+
+        $action = new ForgotPasswordAction($userRepo, $redis);
+        $result = $action->execute(new ForgotPasswordData('user@test.com'));
+
+        $this->assertStringContainsString('Si cet email existe', $result['message']);
     }
 }

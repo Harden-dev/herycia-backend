@@ -44,7 +44,7 @@ class AdminUserController extends Controller
 
             return new JsonResponse([
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => $this->safeMessage($e),
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
@@ -64,7 +64,7 @@ class AdminUserController extends Controller
 
             return new JsonResponse([
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => $this->safeMessage($e),
             ], Response::HTTP_NOT_FOUND);
         }
     }
@@ -86,7 +86,7 @@ class AdminUserController extends Controller
 
             return new JsonResponse([
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => $this->safeMessage($e),
             ], Response::HTTP_BAD_REQUEST);
         }
     }
@@ -109,7 +109,7 @@ class AdminUserController extends Controller
 
             return new JsonResponse([
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => $this->safeMessage($e),
             ], Response::HTTP_BAD_REQUEST);
         }
     }

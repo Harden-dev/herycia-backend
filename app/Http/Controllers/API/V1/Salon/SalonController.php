@@ -72,7 +72,7 @@ class SalonController extends Controller
 
             return new JsonResponse([
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => $this->safeMessage($e),
             ], Response::HTTP_NOT_FOUND);
         }
     }
@@ -118,7 +118,7 @@ class SalonController extends Controller
 
             return new JsonResponse([
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => $this->safeMessage($e),
             ], Response::HTTP_BAD_REQUEST);
         }
     }
@@ -186,7 +186,7 @@ class SalonController extends Controller
         } catch (Exception $e) {
             Log::error('Erreur génération QR salon: '.$e->getMessage());
 
-            return new Response($e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR, [
+            return new Response($this->safeMessage($e), Response::HTTP_INTERNAL_SERVER_ERROR, [
                 'Content-Type' => 'text/plain',
             ]);
         }
@@ -207,7 +207,7 @@ class SalonController extends Controller
 
             return new JsonResponse([
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => $this->safeMessage($e),
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }

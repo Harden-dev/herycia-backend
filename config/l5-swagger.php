@@ -50,6 +50,9 @@ return [
         ],
     ],
     'defaults' => [
+        // Exposition de /api/documentation hors local (audit H10)
+        'docs_enabled' => (bool) env('API_DOCS_ENABLED', false),
+
         'routes' => [
             /*
              * Route for accessing parsed swagger annotations.
@@ -65,10 +68,10 @@ return [
              * Middleware allows to prevent unexpected access to API documentation
              */
             'middleware' => [
-                'api' => [],
-                'asset' => [],
-                'docs' => [],
-                'oauth2_callback' => [],
+                'api' => [\App\Http\Middleware\EnsureApiDocsEnabled::class],
+                'asset' => [\App\Http\Middleware\EnsureApiDocsEnabled::class],
+                'docs' => [\App\Http\Middleware\EnsureApiDocsEnabled::class],
+                'oauth2_callback' => [\App\Http\Middleware\EnsureApiDocsEnabled::class],
             ],
 
             /*
