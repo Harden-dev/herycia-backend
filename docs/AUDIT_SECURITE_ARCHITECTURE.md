@@ -325,3 +325,65 @@
 - `app/Console/Commands/CleanupUnverifiedUsersCommand.php` et sa planification
 - Payloads Postman `webhook/meta-*` et variables `whatsapp_*`
 - Paquets `kreait/firebase-php` et `laravel/sanctum` s'ils restent inutilisés
+
+---
+
+## 8. Statut des corrections (6 octobre 2026)
+
+Corrections appliquées sur la branche `claude/wizardly-archimedes-7r04g6`. Suite de tests : **146 tests verts** (dont 18 nouveaux tests de sécurité dans `tests/Feature/Security/SecurityHardeningTest.php`). `composer audit` : **47 avis → 1** (faible, `firebase/php-jwt`, via `kreait/firebase-php` inutilisé).
+
+### Deux défauts découverts pendant la correction
+
+- **Le middleware JWT du projet ne s'exécutait jamais.** L'alias `jwt.auth` déclaré dans `bootstrap/app.php` était écrasé par celui du paquet `tymon/jwt-auth`. Toutes les routes utilisaient donc le middleware générique du paquet. Il porte désormais l'alias `jwt.verified`.
+- **`/auth/refresh` ne pouvait pas fonctionner** : le jeton était passé à `JWTAuth::refresh()` comme paramètre `$forceForever`. La route est désormais déclarée et corrigée.
+
+### Tableau de statut
+
+| # | Statut | Ce qui a été fait / ce qui reste |
+|---|---|---|
+| C1 | ⚠️ Partiel | `.env.example` nettoyé ; plus de mot de passe super admin par défaut ; le seeder exige 12 caractères. **Reste à faire par vous** : révoquer le mot de passe d'application Gmail, changer le mot de passe PostgreSQL, purger l'historique git. |
+| C2 | ✅ Corrigé | Routes `verify-otp` et `resend-otp` retirées. |
+| C3 | ✅ Corrigé | Simulation désactivée par défaut et refusée en production. |
+| C4 | ✅ Corrigé | Commande de purge désactivée et retirée du planificateur. |
+| C5 | ✅ Corrigé | Limiteurs nommés : login, mot de passe, refresh, réservation, lecture publique, callback, API authentifiée. Réponse 429 en JSON. Captcha non ajouté (côté front). |
+| H1 | ✅ Corrigé | Extension déduite du MIME réel ; `.htaccess` qui interdit les scripts dans `storage/app/public`. **Nginx** : voir la checklist. |
+| H2 | ✅ Corrigé | Chaque requête vérifie `is_active` ; jetons révoqués après un changement de mot de passe (`users.password_changed_at`) ; contrôle aussi au refresh. |
+| H3 | ✅ Corrigé | Salon suspendu, désactivé ou supprimé : connexion refusée et 403 sur toutes les routes. |
+| H4 | ✅ Corrigé | Webhook signé `POST /api/v1/payment/webhook`, confirmation verrouillée et idempotente, paiement toujours crédité, timeouts, réconciliation toutes les 15 min (`paystack:reconcile`). |
+| H5 | ⚠️ Partiel | Verrou et revérification du créneau, horizon de 90 jours, fiche client jamais renommée, plafond SMS par salon. **Non fait** (choix produit) : captcha, contrôle des horaires d'ouverture, statut `pending`. |
+| H6 | ✅ Corrigé | `Controller::safeMessage()` : messages métier conservés, erreurs techniques masquées hors debug. |
+| H7 | ✅ Corrigé | `notes` retiré du suivi public. |
+| H8 | ⚠️ Partiel | JWT et identifiants retirés des logs d'authentification. Quelques logs contiennent encore des emails (code hérité). |
+| H9 | ✅ Corrigé | Mot de passe oublié : réponse identique, règles `exists` retirées, compteur d'essais dédié, comparaison en temps constant. |
+| H10 | ✅ Corrigé | Swagger masqué hors local (`API_DOCS_ENABLED`) ; cache du modèle `User` retiré. **Reste à faire** : mot de passe Redis. |
+| H11 | ✅ Corrigé | Mise à jour ciblée sans version majeure ; contrainte flysystem corrigée. |
+| M1 | ⏸️ Décision produit | Droits des coiffeurs et réceptionnistes : à définir avant implémentation. |
+| M2 | ⏸️ Décision produit | Politique de mot de passe et vérification du téléphone à l'inscription. |
+| M3 | ✅ Corrigé | Bornes sur `paid_at`, verrou anti double paiement, rendez-vous terminé figé, contrôle de chevauchement en back-office. |
+| M4 | ✅ Corrigé | Suppression logique des salons (`deleted_at`). |
+| M5 | ✅ Corrigé | Jobs SMS envoyés après le commit, nom client assaini. |
+| M6 | ✅ Corrigé | `TRUSTED_PROXIES`. |
+| M7 | ✅ Corrigé | `config/cors.php` piloté par `CORS_ALLOWED_ORIGINS`. |
+| M8 | ⚠️ Partiel | Journal d'audit de toutes les actions `/admin` ; impossible de réinitialiser le mot de passe d'un autre super admin ou de bloquer le dernier. **Non fait** : MFA, changement de mot de passe forcé. |
+| M9 | ✅ Corrigé | Plus de `KEYS *`. |
+| M10 | ⏸️ Non traité | Normalisation des téléphones inchangée (risque de régression sur les données existantes). |
+| A1 | ⚠️ Partiel | Imports et alias morts retirés. **La suppression des fichiers hérités (annexe B) a été bloquée par la politique de la session** : à faire après votre validation. |
+| A2, A5, A9, A10 | ⏸️ Non traité | Refactorisations sans impact sécurité immédiat. |
+| A3 | ⚠️ Partiel | Messages filtrés centralement ; les try/catch des contrôleurs restent. |
+| A4 | ✅ Corrigé | Flux OTP retiré, `/auth/refresh` opérationnel. |
+| A6 | ⚠️ Partiel | Verrous sur paiements, créneaux et Paystack. |
+| A7, A8 | ✅ Corrigé | Cache retiré ; QR en SVG sans `imagick`. |
+| A11 | ✅ Corrigé | CI GitHub Actions (tests et `composer audit`), 18 tests de sécurité. |
+| P3, P5 | ✅ Corrigé | Webhook et réconciliation ; suspension effective. |
+| P1, P2, P4, P6, P7 | ⏸️ Décision produit | Voir section 6. |
+| P8 | ⚠️ Partiel | Simulation désactivée ; antidatage borné à 1 an. |
+
+### Checklist de déploiement
+
+1. **Secrets** : révoquer le mot de passe Gmail exposé, changer le mot de passe PostgreSQL, définir `JWT_SECRET`, `SUPER_ADMIN_PASSWORD` (12 caractères ou plus) et `REDIS_PASSWORD`. Purger l'historique git (git-filter-repo), puis demander à chacun de recloner.
+2. **Migrations** : `php artisan migrate` ajoute `users.password_changed_at` et `salons.deleted_at`.
+3. **Variables d'environnement** : `APP_DEBUG=false`, `TRUSTED_PROXIES`, `CORS_ALLOWED_ORIGINS`, `API_DOCS_ENABLED=false`, `SIMULATE_SUBSCRIPTION_PAYMENTS=false`, `SMS_DAILY_LIMIT_PER_SALON`, `BOOKING_MAX_DAYS_AHEAD`.
+4. **Paystack** : déclarer l'URL de webhook `https://<api>/api/v1/payment/webhook` dans le dashboard Paystack.
+5. **Planificateur** : vérifier que `schedule:run` tourne (`supervisor/alpha-scheduler.conf`) pour `paystack:reconcile`.
+6. **Nginx** : interdire l'exécution PHP sous `/storage/`, par exemple avec un bloc `location ^~ /storage/ { location ~ \.php$ { return 403; } }` placé avant le bloc PHP-FPM.
+7. **Frontend** : appliquer les changements décrits dans `docs/BACKOFFICE_API_VUEJS.md` (route `/auth/refresh`, codes `error`, réponse 429, OTP retiré).

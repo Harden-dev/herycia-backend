@@ -376,4 +376,19 @@ class SecurityHardeningTest extends TestCase
             'status' => SubscriptionStatus::Active->value,
         ]);
     }
+
+    /** A4 — /auth/refresh renouvelle la session, sauf pour un compte bloqué. */
+    public function test_refresh_route_issues_new_token_unless_account_disabled(): void
+    {
+        $user = $this->salonAdmin();
+
+        $this->postJson('/api/v1/auth/refresh', [], $this->bearer($user))
+            ->assertOk()
+            ->assertJsonStructure(['data' => ['access_token', 'expires_in']]);
+
+        $headers = $this->bearer($user);
+        $user->update(['is_active' => false]);
+
+        $this->postJson('/api/v1/auth/refresh', [], $headers)->assertUnauthorized();
+    }
 }
