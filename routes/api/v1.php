@@ -42,7 +42,7 @@ Route::prefix('v1')->group(function () {
             Route::post('/reset-password', [AuthController::class, 'resetPassword']);
         });
     });
-    Route::middleware(['jwt.auth', 'throttle:api-user'])->group(function () {
+    Route::middleware(['jwt.verified', 'throttle:api-user'])->group(function () {
         Route::post('/auth/logout', [AuthController::class, 'logout']);
         Route::get('/auth/me', [AuthController::class, 'me']);
 
@@ -53,7 +53,7 @@ Route::prefix('v1')->group(function () {
         });
     });
 
-    Route::middleware(['jwt.auth', 'throttle:api-user', 'subscription.active'])->group(function () {
+    Route::middleware(['jwt.verified', 'throttle:api-user', 'subscription.active'])->group(function () {
         Route::middleware('role.admin')->prefix('salon')->group(function () {
             Route::get('/', [SalonController::class, 'show']);
             Route::put('/', [SalonController::class, 'update']);

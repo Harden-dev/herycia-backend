@@ -7,9 +7,10 @@ use App\Http\Controllers\API\V1\Admin\AdminSalonController;
 use App\Http\Controllers\API\V1\Admin\AdminStatsController;
 use App\Http\Controllers\API\V1\Admin\AdminSubscriptionController;
 use App\Http\Controllers\API\V1\Admin\AdminUserController;
+use App\Http\Middleware\AuditAdminActions;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['jwt.auth', 'throttle:api-user', 'role.super_admin'])->prefix('admin')->group(function () {
+Route::middleware(['jwt.verified', 'throttle:api-user', 'role.super_admin', AuditAdminActions::class])->prefix('admin')->group(function () {
     Route::get('/stats/overview', [AdminStatsController::class, 'overview']);
     Route::get('/stats/salons-by-city', [AdminStatsController::class, 'salonsByCity']);
     Route::get('/me', [AdminMeController::class, 'me']);

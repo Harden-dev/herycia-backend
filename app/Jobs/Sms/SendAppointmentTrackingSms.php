@@ -6,6 +6,7 @@ use App\Models\Appointment;
 use App\Services\PublicLinkService;
 use App\Services\Sms\TwilioSmsService;
 use App\Support\IvoryCoastPhone;
+use App\Support\SmsQuota;
 use Carbon\Carbon;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -36,6 +37,10 @@ class SendAppointmentTrackingSms implements ShouldQueue
             return;
         }
 
+        if (! SmsQuota::consume($appointment->salon_id)) {
+            return;
+        }
+
         $phone = IvoryCoastPhone::normalize($client->phone);
 
         if (! IvoryCoastPhone::isValid($phone)) {
@@ -45,7 +50,9 @@ class SendAppointmentTrackingSms implements ShouldQueue
         $scheduledAt = Carbon::parse($appointment->scheduled_at);
         $trackingLink = $linkService->buildTrackingLink($appointment->tracking_token);
 
-        $body = "Bonjour {$client->name} !\n\n".
+        $clientName = SmsQuota::sanitizeName($client->name);
+
+        $body = "Bonjour {$clientName} !\n\n".
             "Votre rendez-vous chez *{$appointment->salon->name}* est confirmé.\n\n".
             "💇 {$appointment->service->name}\n".
             '📅 '.$scheduledAt->format('d/m/Y à H\hi')."\n".

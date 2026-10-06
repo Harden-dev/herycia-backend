@@ -24,6 +24,9 @@ return [
     | Super admin (seed)
     |--------------------------------------------------------------------------
     */
+    // Horizon maximal de réservation publique, en jours (audit H5)
+    'booking_max_days_ahead' => (int) env('BOOKING_MAX_DAYS_AHEAD', 90),
+
     'subscription_trial_days' => (int) env('SUBSCRIPTION_TRIAL_DAYS', 7),
 
     /** Jours avant expiration où un renouvellement du même plan est autorisé */

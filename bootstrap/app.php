@@ -17,7 +17,8 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
-            'jwt.auth' => JwtMiddleware::class,
+            // Alias distinct de 'jwt.auth', réservé (et écrasé) par le paquet tymon/jwt-auth
+            'jwt.verified' => JwtMiddleware::class,
             'role.admin' => CheckAdminRole::class,
             'role.super_admin' => CheckSuperAdminRole::class,
             'subscription.active' => CheckSubscription::class,

@@ -20,4 +20,7 @@ return [
     */
     'notifications_enabled' => filter_var(env('SMS_NOTIFICATIONS_ENABLED', false), FILTER_VALIDATE_BOOLEAN),
 
+    // Plafond de SMS de rendez-vous par salon et par 24 h (protection contre le « SMS pumping », audit H5)
+    'daily_limit_per_salon' => (int) env('SMS_DAILY_LIMIT_PER_SALON', 200),
+
 ];

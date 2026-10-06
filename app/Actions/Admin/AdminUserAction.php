@@ -10,6 +10,8 @@ use App\Models\User;
 use App\Repositories\Contracts\UserRepositoryInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Hash;
+use RuntimeException;
+use Tymon\JWTAuth\Facades\JWTAuth;
 
 class AdminUserAction
 {
@@ -43,8 +45,16 @@ class AdminUserAction
     /** @return array{user: User, password: string|null} */
     public function resetPassword(string $userId, ?string $newPassword): array
     {
+        $target = $this->getAdminUserAction->execute($userId);
+        $current = JWTAuth::user();
+
+        // Un super admin ne peut pas prendre la main sur le compte d'un autre super admin (audit M8).
+        if ($target->isSuperAdmin() && $current !== null && $target->id !== $current->id) {
+            throw new RuntimeException('Le mot de passe d\'un autre super administrateur ne peut pas être réinitialisé.');
+        }
+
         if ($newPassword !== null) {
-            $user = $this->getAdminUserAction->execute($userId);
+            $user = $target;
             $this->userRepository->update($user, [
                 'password' => Hash::make($newPassword),
             ]);
