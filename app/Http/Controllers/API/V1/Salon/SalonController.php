@@ -10,11 +10,13 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\V1\Salon\UpdateSalonRequest;
 use App\Http\Requests\V1\Salon\UploadSalonLogoRequest;
 use App\Http\Resources\V1\Salon\SalonDetailResource;
+use App\Services\PublicLinkService;
 use App\Services\Salon\SalonBookingQrCodeService;
 use App\Services\Salon\SalonContextService;
 use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -31,6 +33,7 @@ class SalonController extends Controller
         private UploadSalonLogoAction $uploadSalonLogoAction,
         private SalonContextService $salonContext,
         private SalonBookingQrCodeService $bookingQrCodeService,
+        private PublicLinkService $publicLinkService,
     ) {}
 
     /**
@@ -189,6 +192,51 @@ class SalonController extends Controller
             return new Response($this->safeMessage($e), Response::HTTP_INTERNAL_SERVER_ERROR, [
                 'Content-Type' => 'text/plain',
             ]);
+        }
+    }
+
+    /**
+     * QR code d'arrivée à afficher à l'accueil : les clients le scannent en arrivant pour
+     * rejoindre la file. La clé est créée au premier appel.
+     */
+    public function checkinQr(): JsonResponse
+    {
+        return $this->checkinQrResponse(regenerate: false);
+    }
+
+    /** Nouvelle clé d'arrivée : l'ancien QR (photo partagée, affiche volée) cesse de fonctionner. */
+    public function regenerateCheckinKey(): JsonResponse
+    {
+        return $this->checkinQrResponse(regenerate: true);
+    }
+
+    private function checkinQrResponse(bool $regenerate): JsonResponse
+    {
+        try {
+            $salon = $this->salonContext->resolveAuthenticatedSalon();
+
+            if ($regenerate || $salon->checkin_key === null) {
+                $salon->forceFill(['checkin_key' => Str::random(32)])->save();
+            }
+
+            $url = $this->publicLinkService->buildCheckinLink($salon->slug, $salon->checkin_key);
+
+            return new JsonResponse([
+                'success' => true,
+                'message' => $regenerate ? 'Nouveau QR code d\'arrivée généré.' : 'QR code d\'arrivée récupéré.',
+                'data' => [
+                    'checkin_url' => $url,
+                    'qr_code' => $this->bookingQrCodeService->dataUriForUrl($url),
+                    'late_tolerance_minutes' => $salon->late_tolerance_minutes ?? 15,
+                ],
+            ], Response::HTTP_OK);
+        } catch (Exception $e) {
+            Log::error('Erreur QR d\'arrivée: '.$e->getMessage());
+
+            return new JsonResponse([
+                'success' => false,
+                'message' => $this->safeMessage($e),
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 

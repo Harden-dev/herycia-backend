@@ -122,6 +122,8 @@ class AppServiceProvider extends ServiceProvider
             ];
         });
 
+        RateLimiter::for('public-checkin', fn (Request $request) => Limit::perHour(30)->by('checkin-ip:'.$request->ip()));
+
         RateLimiter::for('payment-callback', fn (Request $request) => Limit::perMinute(30)->by('payment-cb:'.$request->ip()));
     }
 }
