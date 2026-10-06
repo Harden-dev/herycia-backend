@@ -325,4 +325,55 @@ class SecurityHardeningTest extends TestCase
             'status' => PaymentTransactionStatus::Pending->value,
         ]);
     }
+
+    /** P3 — la réconciliation confirme un paiement dont le callback n'est jamais arrivé. */
+    public function test_reconcile_command_confirms_pending_payment(): void
+    {
+        config(['paystack.secret_key' => 'sk_test_secret']);
+
+        $salon = Salon::factory()->create();
+        $plan = Plan::factory()->pro()->create();
+        Subscription::query()->create([
+            'salon_id' => $salon->id,
+            'plan_id' => $plan->id,
+            'status' => SubscriptionStatus::Trial,
+            'is_trial' => true,
+        ]);
+
+        $reference = 'SAL-RECONCILEREF01';
+        $transaction = PaymentTransaction::query()->create([
+            'salon_id' => $salon->id,
+            'plan_id' => $plan->id,
+            'amount' => 15000,
+            'currency' => 'XOF',
+            'reference' => $reference,
+            'status' => PaymentTransactionStatus::Pending,
+        ]);
+        $transaction->forceFill(['created_at' => now()->subMinutes(30)])->save();
+
+        Http::fake([
+            'https://api.paystack.co/transaction/verify/'.$reference => Http::response([
+                'status' => true,
+                'data' => [
+                    'status' => 'success',
+                    'reference' => $reference,
+                    'amount' => 1_500_000,
+                    'currency' => 'XOF',
+                    'paid_at' => now()->toIso8601String(),
+                    'channel' => 'mobile_money',
+                ],
+            ], 200),
+        ]);
+
+        $this->artisan('paystack:reconcile')->assertSuccessful();
+
+        $this->assertDatabaseHas('payment_transactions', [
+            'reference' => $reference,
+            'status' => PaymentTransactionStatus::Success->value,
+        ]);
+        $this->assertDatabaseHas('subscriptions', [
+            'salon_id' => $salon->id,
+            'status' => SubscriptionStatus::Active->value,
+        ]);
+    }
 }
