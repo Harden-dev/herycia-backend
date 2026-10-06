@@ -38,7 +38,18 @@ class User extends Authenticatable implements JWTSubject
             'role' => SalonStaffRole::class,
             'is_active' => 'boolean',
             'password' => 'hashed',
+            'password_changed_at' => 'datetime',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        // Tout changement de mot de passe révoque les JWT émis auparavant (cf. JwtMiddleware).
+        static::updating(function (User $user): void {
+            if ($user->isDirty('password')) {
+                $user->password_changed_at = now();
+            }
+        });
     }
 
     public function getJWTIdentifier(): mixed

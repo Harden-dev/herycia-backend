@@ -24,7 +24,9 @@ class UserRepository implements UserRepositoryInterface
 
     public function findById(string $id): ?User
     {
-        return Cache::remember("user.{$id}", now()->addHour(), fn () => $this->userModel->find($id));
+        // Pas de cache : le modèle complet (hash du mot de passe, statut) ne doit pas être
+        // servi périmé ni stocké sérialisé dans Redis (audit H10).
+        return $this->userModel->find($id);
     }
 
     public function findByIdForSalon(string $id, string $salonId): ?User

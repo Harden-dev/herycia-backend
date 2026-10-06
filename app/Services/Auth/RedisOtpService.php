@@ -69,15 +69,7 @@ class RedisOtpService
             return json_decode($data, true);
         }
 
-        // Si pas trouvé par email, chercher par phone dans tous les pending users
-        $keys = Redis::keys(self::PENDING_USER_PREFIX . '*');
-        foreach ($keys as $key) {
-            $userData = json_decode(Redis::get($key), true);
-            if (isset($userData['phone']) && $userData['phone'] === $identifier) {
-                return $userData;
-            }
-        }
-
+        // Pas de recherche par KEYS * (O(N), bloque Redis) : lookup direct uniquement (audit M9).
         return null;
     }
 

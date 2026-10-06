@@ -8,4 +8,8 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-Schedule::command('users:cleanup-unverified')->hourly();
+// users:cleanup-unverified n'est plus planifiée (audit C4) : l'inscription crée des comptes actifs,
+// les seuls comptes inactifs sont des employés désactivés ou des comptes bloqués, qu'il ne faut pas supprimer.
+
+// Filet de sécurité Paystack : confirme les paiements dont ni le callback ni le webhook ne sont arrivés.
+Schedule::command('paystack:reconcile')->everyFifteenMinutes()->withoutOverlapping();

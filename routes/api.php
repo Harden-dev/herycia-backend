@@ -7,8 +7,8 @@ use Illuminate\Support\Facades\Route;
 require __DIR__.'/api/v1.php';
 
 Route::prefix('booking')->group(function () {
-    Route::get('/{slug}', [BookingController::class, 'show']);
-    Route::post('/{slug}', [BookingController::class, 'store']);
+    Route::get('/{slug}', [BookingController::class, 'show'])->middleware('throttle:public-read');
+    Route::post('/{slug}', [BookingController::class, 'store'])->middleware('throttle:public-booking');
 });
 
-Route::get('/rdv/{tracking_token}', [AppointmentTrackingController::class, 'show']);
+Route::get('/rdv/{tracking_token}', [AppointmentTrackingController::class, 'show'])->middleware('throttle:public-read');

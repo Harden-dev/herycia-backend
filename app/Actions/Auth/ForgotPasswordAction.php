@@ -8,6 +8,7 @@ use App\Repositories\Contracts\UserRepositoryInterface;
 use App\Services\Auth\RedisOtpService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Redis;
 
 class ForgotPasswordAction
 {
@@ -16,55 +17,48 @@ class ForgotPasswordAction
         private RedisOtpService $redisOtpService,
     ) {}
 
+    /** Réponse identique que le compte existe ou non (audit H9 : pas d'énumération). */
+    private const NEUTRAL_MESSAGE = 'Si cet email existe, un code de réinitialisation a été envoyé';
+
     public function execute(ForgotPasswordData $data): array
     {
-        try {
-            $user = $this->userRepository->findByEmail($data->email);
+        $neutral = [
+            'message' => self::NEUTRAL_MESSAGE,
+            'expires_in' => 10,
+        ];
 
-            if (!$user) {
-                // Pour la sécurité, on ne dit pas que l'utilisateur n'existe pas
-                return [
-                    'message' => 'Si cet email existe, un code de réinitialisation a été envoyé',
-                ];
-            }
+        $user = $this->userRepository->findByEmail($data->email);
 
-            // Vérifier le rate limiting
-            if (!$this->redisOtpService->checkRateLimit($data->email)) {
-                throw new \Exception('Trop de tentatives. Veuillez réessayer dans 5 minutes.');
-            }
-
-            // Générer un code OTP pour le reset password
-            $otpCode = $this->redisOtpService->generateCode();
-
-            // Stocker l'OTP dans Redis (clé différente pour le reset password)
-            $resetKey = 'otp:password_reset:email:' . $data->email;
-            $otpData = json_encode([
-                'email' => $data->email,
-                'code' => $otpCode,
-                'created_at' => now()->timestamp,
-            ]);
-            \Illuminate\Support\Facades\Redis::setex($resetKey, 600, $otpData); // 10 minutes
-
-            // Incrémenter le rate limit
-            $this->redisOtpService->incrementRateLimit($data->email);
-
-            // Envoyer le code par email
-            Notification::route('mail', $data->email)
-                ->notify(new OtpNotification($otpCode, 'email', 'password_reset'));
-
-            Log::info('Password reset OTP sent', [
-                'email' => $data->email,
-            ]);
-
-            return [
-                'message' => 'Un code de réinitialisation a été envoyé à votre adresse email',
-                'expires_in' => 10, // minutes
-            ];
-
-        } catch (\Exception $e) {
-            Log::error('Error sending password reset OTP: ' . $e->getMessage());
-            throw new \Exception($e->getMessage());
+        if (! $user || ! $user->is_active) {
+            return $neutral;
         }
+
+        // Limite atteinte : on n'envoie rien mais on ne révèle pas l'existence du compte.
+        if (! $this->redisOtpService->checkRateLimit($data->email)) {
+            Log::notice('Password reset OTP rate limited');
+
+            return $neutral;
+        }
+
+        $otpCode = $this->redisOtpService->generateCode();
+
+        $resetKey = 'otp:password_reset:email:'.$data->email;
+        $otpData = json_encode([
+            'email' => $data->email,
+            'code' => $otpCode,
+            'created_at' => now()->timestamp,
+        ]);
+
+        Redis::setex($resetKey, 600, $otpData); // 10 minutes
+        Redis::del(VerifyResetCodeAction::ATTEMPTS_PREFIX.$data->email);
+
+        $this->redisOtpService->incrementRateLimit($data->email);
+
+        Notification::route('mail', $data->email)
+            ->notify(new OtpNotification($otpCode, 'email', 'password_reset'));
+
+        Log::info('Password reset OTP sent', ['user_id' => $user->id]);
+
+        return $neutral;
     }
 }
-

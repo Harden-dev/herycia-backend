@@ -56,7 +56,7 @@ class AppointmentTrackingController extends Controller
         } catch (PublicBookingException $e) {
             return new JsonResponse([
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => $this->safeMessage($e),
                 'code' => $e->errorCode(),
             ], $e->statusCode());
         } catch (\Exception $e) {
@@ -64,7 +64,7 @@ class AppointmentTrackingController extends Controller
 
             return new JsonResponse([
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => $this->safeMessage($e),
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }

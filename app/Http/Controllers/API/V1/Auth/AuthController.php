@@ -134,7 +134,7 @@ class AuthController extends Controller
 
             return new JsonResponse([
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => $this->safeMessage($e),
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
@@ -216,7 +216,7 @@ class AuthController extends Controller
 
             return new JsonResponse([
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => $this->safeMessage($e),
             ], Response::HTTP_UNAUTHORIZED);
         }
     }
@@ -269,7 +269,7 @@ class AuthController extends Controller
             Log::error('Erreur lors de la déconnexion: ' . $e->getMessage());
             return new JsonResponse([
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => $this->safeMessage($e),
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
@@ -316,7 +316,7 @@ class AuthController extends Controller
 
             return new JsonResponse([
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => $this->safeMessage($e),
             ], Response::HTTP_UNAUTHORIZED);
         }
     }
@@ -383,7 +383,7 @@ class AuthController extends Controller
 
             return new JsonResponse([
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => $this->safeMessage($e),
             ], Response::HTTP_UNAUTHORIZED);
         }
     }
@@ -448,7 +448,7 @@ class AuthController extends Controller
 
             return new JsonResponse([
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => $this->safeMessage($e),
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
@@ -511,7 +511,7 @@ class AuthController extends Controller
 
             return new JsonResponse([
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => $this->safeMessage($e),
             ], Response::HTTP_BAD_REQUEST);
         }
     }
@@ -576,7 +576,7 @@ class AuthController extends Controller
 
             return new JsonResponse([
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => $this->safeMessage($e),
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
     }
@@ -639,7 +639,7 @@ class AuthController extends Controller
 
             return new JsonResponse([
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => $this->safeMessage($e),
             ], Response::HTTP_BAD_REQUEST);
         }
     }
@@ -701,7 +701,7 @@ class AuthController extends Controller
 
             return new JsonResponse([
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => $this->safeMessage($e),
             ], Response::HTTP_BAD_REQUEST);
         }
     }

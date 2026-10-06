@@ -20,7 +20,7 @@ class PublicAppointmentTrackingResource extends JsonResource
                 : null,
             'scheduled_at' => $this->scheduled_at?->toIso8601String(),
             'status' => $this->status?->value,
-            'notes' => $this->notes,
+            // 'notes' volontairement absent : notes internes au salon (audit H7).
             'salon' => $this->whenLoaded('salon', fn () => [
                 'name' => $this->salon?->name,
                 'city' => $this->salon?->city,

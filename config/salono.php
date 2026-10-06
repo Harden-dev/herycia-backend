@@ -24,18 +24,29 @@ return [
     | Super admin (seed)
     |--------------------------------------------------------------------------
     */
+    // Horizon maximal de réservation publique, en jours (audit H5)
+    'booking_max_days_ahead' => (int) env('BOOKING_MAX_DAYS_AHEAD', 90),
+
     'subscription_trial_days' => (int) env('SUBSCRIPTION_TRIAL_DAYS', 7),
 
     /** Jours avant expiration où un renouvellement du même plan est autorisé */
     'subscription_renewal_window_days' => (int) env('SUBSCRIPTION_RENEWAL_WINDOW_DAYS', 7),
 
-    'simulate_subscription_payments' => (bool) env('SIMULATE_SUBSCRIPTION_PAYMENTS', true),
+    // Désactivé par défaut : ne jamais activer en production (abonnements gratuits).
+    'simulate_subscription_payments' => (bool) env('SIMULATE_SUBSCRIPTION_PAYMENTS', false),
+
+    /*
+    | Proxies de confiance (load balancer, Cloudflare…) : IP/CIDR séparés par des virgules, ou "*".
+    | Vide = aucun proxy de confiance (audit M6).
+    */
+    'trusted_proxies' => env('TRUSTED_PROXIES'),
 
     'super_admin' => [
         'name' => env('SUPER_ADMIN_NAME', 'Super Admin'),
         'email' => env('SUPER_ADMIN_EMAIL', 'superadmin@salono.ci'),
-        'phone' => env('SUPER_ADMIN_PHONE', '2250700000000'),
-        'password' => env('SUPER_ADMIN_PASSWORD', 'SuperAdmin123!'),
+        'phone' => env('SUPER_ADMIN_PHONE'),
+        // Aucun mot de passe par défaut : le seeder refuse de s'exécuter sans valeur robuste.
+        'password' => env('SUPER_ADMIN_PASSWORD'),
     ],
 
 ];

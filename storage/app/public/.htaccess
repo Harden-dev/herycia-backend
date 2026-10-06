@@ -1,0 +1,8 @@
+# Fichiers téléversés (servis via public/storage) : aucun script ne doit s'exécuter ici (audit H1).
+<FilesMatch "\.(php[0-9]?|phtml|phar|pl|py|cgi|sh)$">
+    Require all denied
+</FilesMatch>
+<IfModule mod_php.c>
+    php_flag engine off
+</IfModule>
+Options -ExecCGI -Indexes

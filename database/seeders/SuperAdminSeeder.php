@@ -14,6 +14,14 @@ class SuperAdminSeeder extends Seeder
         $phone = config('salono.super_admin.phone');
         $password = config('salono.super_admin.password');
 
+        if (! is_string($phone) || $phone === '' || ! is_string($password) || strlen($password) < 12) {
+            $this->command?->error(
+                'Super admin non créé : définir SUPER_ADMIN_PHONE et SUPER_ADMIN_PASSWORD (12 caractères minimum) dans .env.'
+            );
+
+            return;
+        }
+
         User::query()->updateOrCreate(
             ['phone' => $phone],
             [

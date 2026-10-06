@@ -24,12 +24,13 @@ class AppointmentObserver
 
     public function created(Appointment $appointment): void
     {
-        SendAppointmentTrackingSms::dispatch($appointment);
+        // afterCommit : pas de SMS pour un rendez-vous annulé par un rollback (audit M5)
+        SendAppointmentTrackingSms::dispatch($appointment)->afterCommit();
 
         $reminderAt = $appointment->scheduled_at->copy()->subHour();
 
         if ($reminderAt->isFuture()) {
-            SendAppointmentReminderSms::dispatch($appointment)->delay($reminderAt);
+            SendAppointmentReminderSms::dispatch($appointment)->delay($reminderAt)->afterCommit();
         }
     }
 }

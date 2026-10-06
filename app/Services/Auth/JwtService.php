@@ -22,7 +22,8 @@ class JwtService
  public function refreshToken(string $token): string
  {
     try {
-        $token = JWTAuth::refresh($token);
+        // refresh() n'accepte pas le jeton en argument (1er paramètre = $forceForever) : il faut le poser avant.
+        $token = JWTAuth::setToken($token)->refresh();
         return $token;
     } catch (\Throwable $th) {
         Log::error('Error refreshing token: ' . $th->getMessage());

@@ -25,6 +25,12 @@ class UpdateSalonAppointmentStatusAction
             throw new \RuntimeException('Impossible de modifier un rendez-vous annulé.');
         }
 
+        // Un rendez-vous terminé est figé : les allers-retours Completed → autre → Completed
+        // incrémentaient total_visits à chaque passage (audit M3).
+        if ($appointment->status === AppointmentStatus::Completed && $data->status !== AppointmentStatus::Completed) {
+            throw new \RuntimeException('Impossible de modifier un rendez-vous terminé.');
+        }
+
         $previousStatus = $appointment->status;
 
         $this->appointmentRepository->update($appointment, [

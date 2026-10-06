@@ -282,10 +282,18 @@ Réponse 200 : `{ "success": true, "message": "Déconnexion réussie" }`
 
 ---
 
-## OTP (legacy / optionnel)
+## POST `/auth/refresh` — Rafraîchir la session
 
-| POST | `/auth/verify-otp` | `{ "login", "code" }` |
-| POST | `/auth/resend-otp` | `{ "login" }` |
+En-tête `Authorization: Bearer <token>` (même expiré, dans la fenêtre de rafraîchissement de 14 jours).
+
+Réponse 200 — `data` : `{ "access_token", "token_type": "Bearer", "expires_in" }`. Remplacer le jeton stocké.
+Réponse 401 : compte bloqué, mot de passe changé ou salon suspendu → déconnecter.
+
+> **Mot de passe oublié** : la réponse est toujours `200` avec le même message, que l'email existe ou non. Afficher « Si cet email existe, un code a été envoyé ».
+
+## OTP — retiré
+
+`/auth/verify-otp` et `/auth/resend-otp` ont été supprimés (audit de sécurité C2) : l'inscription crée des comptes actifs.
 
 ---
 
@@ -775,15 +783,49 @@ api.interceptors.request.use((config) => {
 
 api.interceptors.response.use(
   (r) => r,
-  (err) => {
-    if (err.response?.status === 401) authStore.logout()
+  async (err) => {
+    const status = err.response?.status
+    const error = err.response?.data?.error
+
+    // Jeton expiré : une tentative de rafraîchissement, puis rejouer la requête
+    if (status === 401 && error === 'token_expired' && !err.config._retried) {
+      err.config._retried = true
+      const ok = await authStore.refresh() // POST /auth/refresh
+      if (ok) return api(err.config)
+    }
+
+    // account_disabled | token_revoked | token_invalid | … → déconnexion
+    if (status === 401) authStore.logout()
+
+    // Salon suspendu ou désactivé par Salono
+    if (status === 403 && ['salon_suspended', 'salon_inactive'].includes(error)) {
+      authStore.logout({ reason: err.response.data.message })
+    }
+
     if (err.response?.data?.code?.startsWith('subscription_')) {
       router.push('/abonnement')
     }
+
+    // Limitation de débit : afficher le message, réessayer après l'en-tête Retry-After
+    if (status === 429) toast.warning(err.response.data.message)
+
     return Promise.reject(err)
   }
 )
 ```
+
+## Codes d'erreur d'authentification (`error`)
+
+| HTTP | `error` | Action front |
+|------|---------|--------------|
+| 401 | `token_expired` | `POST /auth/refresh` puis rejouer la requête |
+| 401 | `token_invalid`, `token_error`, `unauthorized` | Déconnexion |
+| 401 | `account_disabled` | Déconnexion + message « compte désactivé » |
+| 401 | `token_revoked` | Déconnexion (mot de passe changé) |
+| 403 | `salon_suspended`, `salon_inactive` | Déconnexion + message de `message` |
+| 429 | `too_many_requests` | Message, réessayer plus tard (`Retry-After`) |
+
+> Les erreurs serveur inattendues renvoient désormais « Une erreur interne est survenue. Veuillez réessayer. » au lieu du détail technique.
 
 ## Pages → endpoints
 
@@ -808,6 +850,7 @@ api.interceptors.response.use(
 |---------|-------|------|------|
 | POST | `/auth/register` | — | — |
 | POST | `/auth/login` | — | — |
+| POST | `/auth/refresh` | JWT (même expiré) | tous |
 | GET | `/auth/me` | JWT | tous |
 | POST | `/auth/logout` | JWT | tous |
 | POST | `/auth/forgot-password` | — | — |

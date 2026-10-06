@@ -28,10 +28,13 @@ class AuthService
             throw new \Exception('Votre compte est désactivé');
         }
 
-        Log::info('User logged in successfully', [
-            'user_id' => $user->id,
-            'login' => $user->email ?? $user->phone,
-        ]);
+        if ($user->salon_id !== null && ($user->salon === null || ! $user->salon->isOperational())) {
+            throw new \Exception($user->salon?->isSuspended()
+                ? 'Ce salon est suspendu. Contactez le support Salono.'
+                : 'Ce salon n\'est plus actif. Contactez le support Salono.');
+        }
+
+        Log::info('User logged in successfully', ['user_id' => $user->id]);
 
         return $user;
     }

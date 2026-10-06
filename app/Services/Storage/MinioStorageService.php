@@ -16,7 +16,8 @@ class MinioStorageService
     public function upload(UploadedFile $file, string $folder, ?string $disk = null): string
     {
         $disk = $disk ?? $this->defaultDisk;
-        $extension = $file->getClientOriginalExtension();
+        // Extension déduite du contenu (MIME détecté), jamais du nom fourni par le client (audit H1).
+        $extension = $file->guessExtension() ?? 'bin';
         $filename = Str::uuid() . '.' . $extension;
         $path = $folder . '/' . $filename;
 

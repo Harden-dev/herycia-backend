@@ -6,6 +6,7 @@ use App\Data\Paystack\PaystackInitializeResult;
 use App\Data\Paystack\PaystackVerifyResult;
 use App\Exceptions\PaystackException;
 use App\Support\Paystack\PaystackAmount;
+use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
 
 class PaystackService
@@ -20,8 +21,7 @@ class PaystackService
         string $callbackUrl,
         array $metadata = [],
     ): PaystackInitializeResult {
-        $response = Http::withToken($this->secretKey())
-            ->acceptJson()
+        $response = $this->client()
             ->post($this->apiUrl('/transaction/initialize'), [
                 'email' => $email,
                 'amount' => PaystackAmount::toPaystack($amount),
@@ -48,9 +48,9 @@ class PaystackService
 
     public function verify(string $reference): PaystackVerifyResult
     {
-        $response = Http::withToken($this->secretKey())
-            ->acceptJson()
-            ->get($this->apiUrl('/transaction/verify/'.$reference));
+        $response = $this->client()
+            ->retry(2, 300, throw: false)
+            ->get($this->apiUrl('/transaction/verify/'.rawurlencode($reference)));
 
         if (! $response->successful() || ! $response->json('status')) {
             throw new PaystackException(
@@ -67,7 +67,34 @@ class PaystackService
             currency: (string) ($data['currency'] ?? 'XOF'),
             paidAt: $data['paid_at'] ?? null,
             channel: $data['channel'] ?? null,
+            status: (string) ($data['status'] ?? ''),
         );
+    }
+
+    /**
+     * Vérifie la signature d'un webhook Paystack (HMAC SHA-512 du corps brut avec la clé secrète).
+     */
+    public function isValidWebhookSignature(string $payload, ?string $signature): bool
+    {
+        if ($signature === null || $signature === '') {
+            return false;
+        }
+
+        try {
+            $expected = hash_hmac('sha512', $payload, $this->secretKey());
+        } catch (PaystackException) {
+            return false;
+        }
+
+        return hash_equals($expected, $signature);
+    }
+
+    private function client(): PendingRequest
+    {
+        return Http::withToken($this->secretKey())
+            ->acceptJson()
+            ->connectTimeout(5)
+            ->timeout(20);
     }
 
     private function secretKey(): string

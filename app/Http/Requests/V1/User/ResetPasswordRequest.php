@@ -19,7 +19,7 @@ class ResetPasswordRequest extends FormRequest
     {
         return [
             'token' => 'required|string',
-            'email' => 'required|email|exists:users,email',
+            'email' => 'required|email|max:255',
             'password' => ['required', 'string', 'min:8', 'confirmed', Password::min(8)->letters()->numbers()->mixedCase()->symbols()],
         ];
     }
@@ -30,7 +30,6 @@ class ResetPasswordRequest extends FormRequest
             'token.required' => 'Le token est requis.',
             'email.required' => 'L\'email est requis.',
             'email.email' => 'L\'email doit être valide.',
-            'email.exists' => 'Aucun compte n\'est associé à cet email.',
             'password.required' => 'Le mot de passe est requis.',
             'password.confirmed' => 'La confirmation du mot de passe ne correspond pas.',
             'password.min' => 'Le mot de passe doit contenir au moins 8 caractères.',

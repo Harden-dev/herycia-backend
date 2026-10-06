@@ -2,6 +2,7 @@
 
 namespace App\Actions\Admin\User;
 
+use App\Enums\SalonStaffRole;
 use App\Models\User;
 use App\Repositories\Contracts\UserRepositoryInterface;
 use App\Services\Auth\AuthService;
@@ -31,6 +32,12 @@ class BlockAdminUserAction
 
         if ($user->isSuperAdmin() && $nextStatus === false && ! $authenticatedUser->isSuperAdmin()) {
             throw new RuntimeException('Seul un super administrateur peut bloquer ce compte.');
+        }
+
+        // Ne jamais bloquer le dernier super admin actif (perte d'accès à la plateforme).
+        if ($user->isSuperAdmin() && $nextStatus === false
+            && User::query()->where('role', SalonStaffRole::SuperAdmin)->where('is_active', true)->count() <= 1) {
+            throw new RuntimeException('Impossible de bloquer le dernier super administrateur actif.');
         }
 
         $this->userRepository->toggleStatus($user, $nextStatus);

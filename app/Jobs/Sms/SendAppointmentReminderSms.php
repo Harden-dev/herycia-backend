@@ -7,6 +7,7 @@ use App\Models\Appointment;
 use App\Services\PublicLinkService;
 use App\Services\Sms\TwilioSmsService;
 use App\Support\IvoryCoastPhone;
+use App\Support\SmsQuota;
 use Carbon\Carbon;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -38,6 +39,10 @@ class SendAppointmentReminderSms implements ShouldQueue
         $client = $appointment->client;
 
         if ($client === null || $client->phone === '') {
+            return;
+        }
+
+        if (! SmsQuota::consume($appointment->salon_id)) {
             return;
         }
 

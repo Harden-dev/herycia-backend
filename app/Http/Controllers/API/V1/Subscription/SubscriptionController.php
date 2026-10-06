@@ -43,21 +43,21 @@ class SubscriptionController extends Controller
         } catch (SubscriptionAlreadyActiveException|PlanNotFoundException $e) {
             return new JsonResponse([
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => $this->safeMessage($e),
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         } catch (PaystackException $e) {
             Log::error('Erreur Paystack initialize: '.$e->getMessage());
 
             return new JsonResponse([
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => $this->safeMessage($e),
             ], Response::HTTP_BAD_GATEWAY);
         } catch (Exception $e) {
             Log::error('Erreur initialize abonnement: '.$e->getMessage());
 
             return new JsonResponse([
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => $this->safeMessage($e),
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
@@ -77,7 +77,7 @@ class SubscriptionController extends Controller
 
             return new JsonResponse([
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => $this->safeMessage($e),
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
@@ -102,14 +102,14 @@ class SubscriptionController extends Controller
         } catch (SubscriptionAlreadyActiveException|PlanNotFoundException $e) {
             return new JsonResponse([
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => $this->safeMessage($e),
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         } catch (Exception $e) {
             Log::error('Erreur simulation paiement abonnement: '.$e->getMessage());
 
             return new JsonResponse([
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => $this->safeMessage($e),
             ], Response::HTTP_BAD_REQUEST);
         }
     }
