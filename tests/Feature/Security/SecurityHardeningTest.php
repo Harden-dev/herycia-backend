@@ -318,7 +318,8 @@ class SecurityHardeningTest extends TestCase
 
         Http::fake(['*' => Http::response(['status' => false, 'message' => 'Erreur'], 500)]);
 
-        $this->get('/api/v1/payment/callback?reference='.$reference);
+        $this->get('/api/v1/payment/callback?reference='.$reference)
+            ->assertRedirectContains('payment=pending');
 
         $this->assertDatabaseHas('payment_transactions', [
             'reference' => $reference,

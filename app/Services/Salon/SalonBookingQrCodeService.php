@@ -41,4 +41,20 @@ class SalonBookingQrCodeService
             ->errorCorrection('M')
             ->generate($this->publicLinkService->buildBookingLink($slug));
     }
+
+    /** QR (data URI) pour une URL quelconque, par exemple le QR d'arrivée. PNG si imagick, sinon SVG. */
+    public function dataUriForUrl(string $url): string
+    {
+        $size = (int) config('salono.booking_qr_size', 300);
+
+        if (! extension_loaded('imagick')) {
+            $svg = (string) QrCode::format('svg')->size($size)->margin(2)->errorCorrection('M')->generate($url);
+
+            return 'data:image/svg+xml;base64,'.base64_encode($svg);
+        }
+
+        $png = (string) QrCode::format('png')->size($size)->margin(2)->errorCorrection('M')->generate($url);
+
+        return 'data:image/png;base64,'.base64_encode($png);
+    }
 }

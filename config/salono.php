@@ -27,6 +27,12 @@ return [
     // Horizon maximal de réservation publique, en jours (audit H5)
     'booking_max_days_ahead' => (int) env('BOOKING_MAX_DAYS_AHEAD', 90),
 
+    // File d'attente : délai après l'heure du RDV avant de marquer absent un client jamais arrivé
+    'auto_no_show_after_minutes' => (int) env('QUEUE_AUTO_NO_SHOW_AFTER_MINUTES', 60),
+
+    // File d'attente : SMS « c'est bientôt votre tour » quand le passage est estimé dans ce délai
+    'queue_soon_notify_minutes' => (int) env('QUEUE_SOON_NOTIFY_MINUTES', 10),
+
     'subscription_trial_days' => (int) env('SUBSCRIPTION_TRIAL_DAYS', 7),
 
     /** Jours avant expiration où un renouvellement du même plan est autorisé */

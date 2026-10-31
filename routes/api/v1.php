@@ -8,6 +8,7 @@ use App\Http\Controllers\API\V1\Payment\PaystackWebhookController;
 use App\Http\Controllers\API\V1\Payment\PaymentController;
 use App\Http\Controllers\API\V1\Plan\PlanController;
 use App\Http\Controllers\API\V1\Queue\QueueController;
+use App\Services\Queue\QueueActionService;
 use App\Http\Controllers\API\V1\Subscription\SubscriptionController;
 use App\Http\Controllers\API\V1\Salon\SalonController;
 use App\Http\Controllers\API\V1\Service\ServiceController;
@@ -58,6 +59,8 @@ Route::prefix('v1')->group(function () {
             Route::get('/', [SalonController::class, 'show']);
             Route::put('/', [SalonController::class, 'update']);
             Route::get('/booking-qr', [SalonController::class, 'bookingQr']);
+            Route::get('/checkin-qr', [SalonController::class, 'checkinQr']);
+            Route::post('/checkin-qr/regenerate', [SalonController::class, 'regenerateCheckinKey']);
             Route::post('/logo', [SalonController::class, 'uploadLogo']);
         });
 
@@ -102,5 +105,13 @@ Route::prefix('v1')->group(function () {
         });
 
         Route::get('/queue', [QueueController::class, 'index']);
+        Route::get('/queue/board', [QueueController::class, 'board']);
+        Route::post('/queue/check-in', [QueueController::class, 'checkIn']);
+        Route::post('/queue/check-in/late-choice', [QueueController::class, 'lateChoice']);
+        Route::get('/queue/walk-in-options', [QueueController::class, 'walkInOptions']);
+        Route::post('/queue/walk-in', [QueueController::class, 'walkIn']);
+        Route::patch('/queue/{id}/reassign', [QueueController::class, 'reassign']);
+        Route::patch('/queue/{id}/{action}', [QueueController::class, 'action'])
+            ->whereIn('action', QueueActionService::ACTIONS);
     });
 });

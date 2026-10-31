@@ -24,6 +24,12 @@ class Salon extends Model
         'logo_url',
         'is_active',
         'suspended_at',
+        'checkin_key',
+        'late_tolerance_minutes',
+    ];
+
+    protected $hidden = [
+        'checkin_key',
     ];
 
     protected function casts(): array
@@ -31,6 +37,7 @@ class Salon extends Model
         return [
             'is_active' => 'boolean',
             'suspended_at' => 'datetime',
+            'late_tolerance_minutes' => 'integer',
         ];
     }
 
