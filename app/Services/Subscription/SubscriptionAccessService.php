@@ -37,7 +37,7 @@ class SubscriptionAccessService
 
         if (! $this->isUsable($subscription)) {
             throw new SubscriptionAccessException(
-                'Votre abonnement a expiré. Veuillez renouveler pour continuer à utiliser Salono.',
+                'Votre abonnement a expiré. Veuillez renouveler pour continuer à utiliser '.config('app.name').'.',
                 'subscription_expired',
             );
         }

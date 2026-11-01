@@ -5,8 +5,8 @@ namespace App\Http\Controllers;
 /**
  * @OA\Info(
  *     version="1.0.0",
- *     title="Salono Backend API",
- *     description="Documentation de l'API Salono Backend",
+ *     title="MANYAN API",
+ *     description="Documentation de l'API MANYAN",
  *     @OA\Contact(
  *         email="support@salono.com"
  *     )

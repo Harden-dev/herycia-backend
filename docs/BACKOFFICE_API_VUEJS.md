@@ -1,4 +1,4 @@
-# Salono — API Backoffice (Vue.js)
+# MANYAN — API Backoffice (Vue.js)
 
 Documentation d'intégration frontend pour le **tableau de bord salon** (gérant, manager, coiffeur, réceptionniste).
 
@@ -876,7 +876,7 @@ api.interceptors.response.use(
     // account_disabled | token_revoked | token_invalid | … → déconnexion
     if (status === 401) authStore.logout()
 
-    // Salon suspendu ou désactivé par Salono
+    // Salon suspendu ou désactivé par MANYAN
     if (status === 403 && ['salon_suspended', 'salon_inactive'].includes(error)) {
       authStore.logout({ reason: err.response.data.message })
     }
@@ -978,4 +978,4 @@ Pas de JWT. Lien booking = `salon.booking_link` retourné par l'API backoffice.
 
 ---
 
-*Généré depuis le backend Salono — aligné sur `routes/api/v1.php` et les FormRequest/Resources Laravel.*
+*Généré depuis le backend MANYAN — aligné sur `routes/api/v1.php` et les FormRequest/Resources Laravel.*

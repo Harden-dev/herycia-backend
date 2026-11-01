@@ -27,7 +27,7 @@ class WelcomeMail extends Mailable implements ShouldQueue
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Bienvenue sur Salono Backend',
+            subject: 'Bienvenue sur '.config('app.name'),
         );
     }
 

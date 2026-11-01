@@ -155,7 +155,7 @@ if (params.get('payment') === 'failed') {
 
 | Colonne | Description |
 |---------|-------------|
-| `reference` | Référence unique Salono (`SAL-...`) |
+| `reference` | Référence unique MANYAN (`SAL-...`) |
 | `paystack_ref` | Référence Paystack |
 | `status` | `pending` / `success` / `failed` |
 | `amount` | Montant XOF |

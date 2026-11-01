@@ -33,7 +33,7 @@ class SendSalonWelcomeSms implements ShouldQueue
         $this->smsService->send(
             '+'.$phone,
             "Bonjour {$event->user->name} !\n\n".
-            "Votre salon {$event->salon->name} est prêt sur Salono.\n\n".
+            "Votre salon {$event->salon->name} est prêt sur ".config('app.name').".\n\n".
             "Partagez ce lien à vos clients pour qu'ils réservent en ligne :\n{$bookingLink}\n\n".
             'Bonne continuation !',
         );

@@ -1,4 +1,4 @@
-# Salono — Guide intégration Frontend Vue.js
+# MANYAN — Guide intégration Frontend Vue.js
 
 > Abonnements (Basic / Pro), essai 7 jours, paiement Paystack.
 > Stack cible : **Vue 3 + Composition API + Vue Router + Pinia + Axios**.

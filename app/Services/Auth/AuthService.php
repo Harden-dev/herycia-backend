@@ -30,8 +30,8 @@ class AuthService
 
         if ($user->salon_id !== null && ($user->salon === null || ! $user->salon->isOperational())) {
             throw new \Exception($user->salon?->isSuspended()
-                ? 'Ce salon est suspendu. Contactez le support Salono.'
-                : 'Ce salon n\'est plus actif. Contactez le support Salono.');
+                ? 'Ce salon est suspendu. Contactez le support '.config('app.name').'.'
+                : 'Ce salon n\'est plus actif. Contactez le support '.config('app.name').'.');
         }
 
         Log::info('User logged in successfully', ['user_id' => $user->id]);

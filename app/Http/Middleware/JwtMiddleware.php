@@ -64,8 +64,8 @@ class JwtMiddleware
                 return response()->json([
                     'success' => false,
                     'message' => $salon?->isSuspended()
-                        ? 'Ce salon est suspendu. Contactez le support Salono.'
-                        : 'Ce salon n\'est plus actif. Contactez le support Salono.',
+                        ? 'Ce salon est suspendu. Contactez le support '.config('app.name').'.'
+                        : 'Ce salon n\'est plus actif. Contactez le support '.config('app.name').'.',
                     'error' => $salon?->isSuspended() ? 'salon_suspended' : 'salon_inactive',
                 ], Response::HTTP_FORBIDDEN);
             }

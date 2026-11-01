@@ -1,6 +1,6 @@
 # Super Admin — Guide frontend
 
-> Documentation d’implémentation du back-office plateforme Salono.  
+> Documentation d’implémentation du back-office plateforme MANYAN.  
 > Base URL API : `{API_URL}/api/v1`
 
 ---
@@ -25,7 +25,7 @@
 
 ```
 ┌─────────────────────────┐
-│  SALONO Super Admin     │
+│  MANYAN Super Admin     │
 ├─────────────────────────┤
 │ 📊 Dashboard            │  → KPIs + répartition villes + derniers paiements
 │ 🏪 Salons               │  → Liste + détail + actions (modifier/suspendre…)

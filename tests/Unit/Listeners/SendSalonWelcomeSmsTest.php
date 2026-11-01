@@ -50,7 +50,8 @@ class SendSalonWelcomeSmsTest extends TestCase
                 ->once()
                 ->withArgs(function (string $phone, string $body): bool {
                     return $phone === '+2250708112233'
-                        && str_contains($body, 'https://salono.ci/booking/salon-koffi-cocody');
+                        && str_contains($body, 'https://salono.ci/booking/salon-koffi-cocody')
+                        && str_contains($body, 'est prêt sur MANYAN.');
                 });
         });
 

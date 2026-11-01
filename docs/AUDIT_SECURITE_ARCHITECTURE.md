@@ -1,4 +1,4 @@
-# Audit sécurité, architecture et produit — Salono (herycia-backend)
+# Audit sécurité, architecture et produit — MANYAN (herycia-backend)
 
 - **Date** : 1er octobre 2026
 - **Périmètre** : dépôt `herycia-backend`, commit `9b07cae` (Laravel 12, JWT tymon, PostgreSQL, Redis, Paystack, Twilio)
