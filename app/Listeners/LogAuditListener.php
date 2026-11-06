@@ -4,10 +4,12 @@ namespace App\Listeners;
 
 use App\Events\AuditEvent;
 use App\Repositories\Contracts\AuditLogRepositoryInterface;
+use Illuminate\Contracts\Events\ShouldHandleEventsAfterCommit;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Log;
 
-class LogAuditListener implements ShouldQueue
+/** Traité en file après le commit de la transaction qui émet l'événement (jamais sur rollback). */
+class LogAuditListener implements ShouldHandleEventsAfterCommit, ShouldQueue
 {
     public function __construct(
         private AuditLogRepositoryInterface $repository,
@@ -45,7 +47,7 @@ class LogAuditListener implements ShouldQueue
                 'user_agent' => $event->userAgent,
             ], $changes);
         } catch (\Throwable $e) {
-            Log::error('Audit log failed: ' . $e->getMessage(), [
+            Log::error('Audit log failed: '.$e->getMessage(), [
                 'action' => $event->action,
                 'trace' => $e->getTraceAsString(),
             ]);

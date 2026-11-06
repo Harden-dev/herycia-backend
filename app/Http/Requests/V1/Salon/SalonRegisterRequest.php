@@ -4,6 +4,7 @@ namespace App\Http\Requests\V1\Salon;
 
 use App\Enums\PlanCode;
 use App\Enums\SalonCity;
+use App\Rules\SafeName;
 use App\Support\IvoryCoastPhone;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
@@ -21,14 +22,14 @@ class SalonRegisterRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'salon_name' => ['required', 'string', 'min:2', 'max:100', 'regex:/^[\pL\pN\s\-\'’]+$/u'],
+            'salon_name' => ['required', 'string', 'min:2', 'max:100', SafeName::label()],
             'city' => ['required', 'string', Rule::in(SalonCity::values())],
             'whatsapp_number' => ['required', 'string', function (string $attribute, mixed $value, \Closure $fail): void {
                 if (! is_string($value) || ! IvoryCoastPhone::isValid($value)) {
                     $fail('Le format du numéro WhatsApp est invalide.');
                 }
             }, 'unique:salons,whatsapp_number'],
-            'admin_name' => ['required', 'string', 'min:2', 'max:100'],
+            'admin_name' => ['required', 'string', 'min:2', 'max:100', SafeName::person()],
             'phone' => ['required', 'string', function (string $attribute, mixed $value, \Closure $fail): void {
                 if (! is_string($value) || ! IvoryCoastPhone::isValid($value)) {
                     $fail('Le format du numéro de téléphone est invalide.');
@@ -51,7 +52,6 @@ class SalonRegisterRequest extends FormRequest
             'salon_name.required' => 'Le nom du salon est obligatoire.',
             'salon_name.min' => 'Le nom du salon doit contenir au moins 2 caractères.',
             'salon_name.max' => 'Le nom du salon ne peut pas dépasser 100 caractères.',
-            'salon_name.regex' => 'Le nom du salon contient des caractères non autorisés.',
             'city.required' => 'La ville est obligatoire.',
             'city.in' => 'La ville sélectionnée est invalide.',
             'whatsapp_number.required' => 'Le numéro WhatsApp est obligatoire.',

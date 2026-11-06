@@ -13,7 +13,7 @@ class PlanSeeder extends Seeder
             ['code' => 'basic'],
             [
                 'name' => 'Basic',
-                'price_fcfa' => 5000,
+                'price_fcfa' => 3250,
                 'max_employees' => 5,
                 'max_services' => 50,
                 'has_online_booking' => true,
@@ -27,7 +27,7 @@ class PlanSeeder extends Seeder
             ['code' => 'pro'],
             [
                 'name' => 'Pro',
-                'price_fcfa' => 15000,
+                'price_fcfa' => 5250,
                 'max_employees' => null,
                 'max_services' => 200,
                 'has_online_booking' => true,

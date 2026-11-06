@@ -8,6 +8,7 @@ use App\Repositories\Contracts\UserRepositoryInterface;
 use App\Services\Audit\AuditLogService;
 use App\Services\Auth\JwtService;
 use App\Services\Auth\RedisOtpService;
+use App\Support\Pii;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -25,13 +26,13 @@ class VerifyOtpAction
         DB::beginTransaction();
 
         try {
-            if (!$this->redisOtpService->checkVerifyAttempts($login)) {
+            if (! $this->redisOtpService->checkVerifyAttempts($login)) {
                 throw new \Exception('Trop de tentatives de vérification. Veuillez demander un nouveau code.');
             }
 
             $otpData = $this->redisOtpService->getOtp($login);
 
-            if (!$otpData) {
+            if (! $otpData) {
                 throw new \Exception('Code OTP expiré ou invalide. Veuillez demander un nouveau code.');
             }
 
@@ -59,40 +60,40 @@ class VerifyOtpAction
 
             Log::info('User verified successfully', [
                 'user_id' => $user->id,
-                'email' => $user->email,
-                'phone' => $user->phone,
+                'email' => Pii::maskEmail($user->email),
+                'phone' => Pii::maskPhone($user->phone),
             ]);
 
-            event(new UserCreated($user));
-
-            $this->auditLogService->log(
-                'user.created',
-                User::class,
-                $user->id,
-                'Nouvel utilisateur inscrit',
-                null,
-                null,
-                $user->id,
-            );
-
-            $this->redisOtpService->cleanupUserData($user->email, $user->phone);
-
-            $token = $this->jwtService->createToken($user);
-
             DB::commit();
-
-            return [
-                'user' => $user->fresh(['role']),
-                'token' => $token,
-                'token_type' => 'Bearer',
-                'expires_in' => $this->jwtService->getExpiresIn($token),
-                'expires_at' => $this->jwtService->getExpiresAt($token),
-            ];
-
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Error verifying OTP: ' . $e->getMessage(), ['login' => $login]);
+            Log::error('Error verifying OTP: '.$e->getMessage(), ['login' => Pii::maskLogin($login)]);
             throw $e;
         }
+
+        // Après commit (Redis, JWT, événements en file) : un échec ici ne peut plus annuler l'activation.
+        event(new UserCreated($user));
+
+        $this->auditLogService->log(
+            'user.created',
+            User::class,
+            $user->id,
+            'Nouvel utilisateur inscrit',
+            null,
+            null,
+            $user->id,
+        );
+
+        $this->redisOtpService->cleanupUserData($user->email, $user->phone);
+
+        $token = $this->jwtService->createToken($user);
+
+        return [
+            'user' => $user->fresh(['role']),
+            'token' => $token,
+            'token_type' => 'Bearer',
+            'expires_in' => $this->jwtService->getExpiresIn($token),
+            'expires_at' => $this->jwtService->getExpiresAt($token),
+        ];
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Actions\Auth;
 
 use App\Repositories\Contracts\UserRepositoryInterface;
+use App\Support\Pii;
 use Illuminate\Support\Facades\Log;
 
 class ResendVerificationEmailAction
@@ -16,7 +17,7 @@ class ResendVerificationEmailAction
         try {
             $user = $this->userRepository->findByEmail($email);
 
-            if (!$user) {
+            if (! $user) {
                 throw new \Exception('Utilisateur non trouvé');
             }
 
@@ -28,15 +29,14 @@ class ResendVerificationEmailAction
 
             Log::info('Verification email resent', [
                 'user_id' => $user->id,
-                'email' => $user->email,
+                'email' => Pii::maskEmail($user->email),
             ]);
 
             return true;
 
         } catch (\Exception $e) {
-            Log::error('Error resending verification email: ' . $e->getMessage());
+            Log::error('Error resending verification email: '.$e->getMessage());
             throw new \Exception($e->getMessage());
         }
     }
 }
-

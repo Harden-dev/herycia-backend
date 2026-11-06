@@ -35,11 +35,6 @@ return [
         ],
     ],
 
-    'firebase' => [
-        'credentials' => env('FIREBASE_CREDENTIALS', storage_path('firebase/firebase-credentials.json')),
-        'project_id' => env('FIREBASE_PROJECT_ID'),
-    ],
-
     'twilio' => [
         'account_sid' => env('TWILIO_ACCOUNT_SID'),
         'auth_token' => env('TWILIO_AUTH_TOKEN'),

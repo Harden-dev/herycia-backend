@@ -5,8 +5,12 @@ namespace App\Http\Controllers\API\V1\Queue;
 use App\Actions\Queue\ListSalonQueueAction;
 use App\Enums\AppointmentStatus;
 use App\Enums\SalonStaffRole;
+use App\Http\Controllers\Controller;
+use App\Http\Requests\V1\Queue\GetQueueRequest;
+use App\Http\Resources\V1\Queue\QueueEntryResource;
 use App\Models\Appointment;
 use App\Models\User;
+use App\Rules\SafeName;
 use App\Services\Queue\QueueActionService;
 use App\Services\Queue\QueueCheckInService;
 use App\Services\Queue\QueueException;
@@ -14,14 +18,11 @@ use App\Services\Queue\QueueService;
 use App\Services\Queue\QueueWalkInService;
 use App\Services\Salon\SalonContextService;
 use App\Support\Queue\QueuePresenter;
-use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
-use App\Http\Controllers\Controller;
-use App\Http\Requests\V1\Queue\GetQueueRequest;
-use App\Http\Resources\V1\Queue\QueueEntryResource;
 use Exception;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -173,7 +174,7 @@ class QueueController extends Controller
         $data = $request->validate([
             'service_id' => ['required', 'uuid'],
             'stylist_id' => ['nullable', 'uuid'],
-            'name' => ['required', 'string', 'min:2', 'max:100'],
+            'name' => ['required', 'string', 'min:2', 'max:100', SafeName::person()],
             'phone' => ['required', 'string', 'max:20'],
         ]);
 

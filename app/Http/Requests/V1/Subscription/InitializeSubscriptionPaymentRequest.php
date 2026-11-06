@@ -11,9 +11,19 @@ use Symfony\Component\HttpFoundation\Response;
 
 class InitializeSubscriptionPaymentRequest extends FormRequest
 {
+    public const IDEMPOTENCY_HEADER = 'Idempotency-Key';
+
     public function authorize(): bool
     {
         return true;
+    }
+
+    /**
+     * La clé d'idempotence est lue uniquement depuis l'en-tête (une valeur du corps est écrasée).
+     */
+    protected function prepareForValidation(): void
+    {
+        $this->merge(['idempotency_key' => $this->header(self::IDEMPOTENCY_HEADER)]);
     }
 
     public function rules(): array
@@ -25,6 +35,7 @@ class InitializeSubscriptionPaymentRequest extends FormRequest
                 Rule::in(PlanCode::registerableValues()),
                 Rule::exists('plans', 'code')->where(fn ($query) => $query->where('is_archived', false)),
             ],
+            'idempotency_key' => ['required', 'string', 'regex:/\A[A-Za-z0-9_-]{8,128}\z/'],
         ];
     }
 

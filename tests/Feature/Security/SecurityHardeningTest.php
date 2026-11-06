@@ -227,20 +227,18 @@ class SecurityHardeningTest extends TestCase
         $this->assertStringEndsWith('.png', $files[0]);
     }
 
-    /** H4 — un webhook Paystack non signé est rejeté. */
-    public function test_paystack_webhook_rejects_invalid_signature(): void
+    private function configureGeniusPay(): void
     {
-        config(['paystack.secret_key' => 'sk_test_secret']);
-
-        $this->postJson('/api/v1/payment/webhook', ['event' => 'charge.success'], ['x-paystack-signature' => 'faux'])
-            ->assertUnauthorized();
+        config([
+            'geniuspay.public_key' => 'pk_sandbox_fake',
+            'geniuspay.secret_key' => 'sk_sandbox_fake',
+            'geniuspay.webhook_secret' => 'whsec_sandbox_secret',
+            'geniuspay.base_url' => 'https://pay.genius.ci/api/v1/merchant',
+        ]);
     }
 
-    /** H4 — webhook signé : active l'abonnement une seule fois, même rejoué. */
-    public function test_paystack_webhook_activates_subscription_once(): void
+    private function pendingGeniusPayTransaction(string $reference, string $gatewayRef): PaymentTransaction
     {
-        config(['paystack.secret_key' => 'sk_test_secret']);
-
         $salon = Salon::factory()->create();
         $basic = Plan::factory()->basic()->create();
         $pro = Plan::factory()->pro()->create();
@@ -251,37 +249,77 @@ class SecurityHardeningTest extends TestCase
             'is_trial' => true,
         ]);
 
-        $reference = 'SAL-WEBHOOKREF0001';
-        PaymentTransaction::query()->create([
+        return PaymentTransaction::query()->create([
             'salon_id' => $salon->id,
             'plan_id' => $pro->id,
-            'amount' => 15000,
+            'amount' => 5250,
             'currency' => 'XOF',
             'reference' => $reference,
+            'gateway_ref' => $gatewayRef,
             'status' => PaymentTransactionStatus::Pending,
         ]);
+    }
 
+    private function fakeCompletedGeniusPayment(string $gatewayRef): void
+    {
         Http::fake([
-            'https://api.paystack.co/transaction/verify/'.$reference => Http::response([
-                'status' => true,
+            'https://pay.genius.ci/api/v1/merchant/payments/'.$gatewayRef => Http::response([
+                'success' => true,
                 'data' => [
-                    'status' => 'success',
-                    'reference' => $reference,
-                    'amount' => 1_500_000,
+                    'reference' => $gatewayRef,
+                    'amount' => 5250,
                     'currency' => 'XOF',
-                    'paid_at' => now()->toIso8601String(),
-                    'channel' => 'card',
+                    'status' => 'completed',
+                    'payment_method' => 'orange_money',
+                    'payment_provider' => 'orange_money',
+                    'completed_at' => now()->toIso8601String(),
                 ],
             ], 200),
         ]);
+    }
 
-        $body = json_encode(['event' => 'charge.success', 'data' => ['reference' => $reference]]);
-        $signature = hash_hmac('sha512', $body, 'sk_test_secret');
+    /** H4 — un webhook GeniusPay non signé, mal signé ou périmé est rejeté. */
+    public function test_geniuspay_webhook_rejects_invalid_signature(): void
+    {
+        $this->configureGeniusPay();
+        $body = json_encode(['event' => 'payment.success', 'data' => ['reference' => 'MTX-X']]);
+
+        $this->call('POST', '/api/v1/payment/webhook', [], [], [], [
+            'CONTENT_TYPE' => 'application/json',
+            'HTTP_X_WEBHOOK_SIGNATURE' => 'faux',
+            'HTTP_X_WEBHOOK_TIMESTAMP' => (string) time(),
+        ], $body)->assertUnauthorized();
+
+        // Signature valide mais horodatage hors fenêtre (rejeu).
+        $old = (string) (time() - 3600);
+        $this->call('POST', '/api/v1/payment/webhook', [], [], [], [
+            'CONTENT_TYPE' => 'application/json',
+            'HTTP_X_WEBHOOK_SIGNATURE' => hash_hmac('sha256', $old.'.'.$body, 'whsec_sandbox_secret'),
+            'HTTP_X_WEBHOOK_TIMESTAMP' => $old,
+        ], $body)->assertUnauthorized();
+    }
+
+    /** H4 — webhook signé : active l'abonnement une seule fois, même rejoué. */
+    public function test_geniuspay_webhook_activates_subscription_once(): void
+    {
+        $this->configureGeniusPay();
+        $reference = 'SAL-WEBHOOKREF000001';
+        $this->pendingGeniusPayTransaction($reference, 'MTX-WEBHOOK0001');
+        $this->fakeCompletedGeniusPayment('MTX-WEBHOOK0001');
+
+        $body = json_encode([
+            'event' => 'payment.success',
+            'data' => ['object' => 'transaction', 'reference' => 'MTX-WEBHOOK0001', 'status' => 'completed'],
+        ]);
+        $timestamp = (string) time();
+        $signature = hash_hmac('sha256', $timestamp.'.'.$body, 'whsec_sandbox_secret');
 
         for ($i = 0; $i < 2; $i++) {
             $this->call('POST', '/api/v1/payment/webhook', [], [], [], [
                 'CONTENT_TYPE' => 'application/json',
-                'HTTP_X_PAYSTACK_SIGNATURE' => $signature,
+                'HTTP_X_WEBHOOK_SIGNATURE' => $signature,
+                'HTTP_X_WEBHOOK_TIMESTAMP' => $timestamp,
+                'HTTP_X_WEBHOOK_EVENT' => 'payment.success',
             ], $body)->assertOk();
         }
 
@@ -290,33 +328,17 @@ class SecurityHardeningTest extends TestCase
             'status' => PaymentTransactionStatus::Success->value,
         ]);
         $this->assertSame(1, \App\Models\SubscriptionPayment::query()->where('reference', $reference)->count());
+        $this->assertDatabaseHas('subscription_payments', ['reference' => $reference, 'method' => 'orange_money']);
     }
 
-    /** H4 — une erreur de vérification Paystack laisse la transaction en attente. */
-    public function test_paystack_verification_error_keeps_transaction_pending(): void
+    /** H4 — une erreur de vérification GeniusPay laisse la transaction en attente. */
+    public function test_geniuspay_verification_error_keeps_transaction_pending(): void
     {
-        config(['paystack.secret_key' => 'sk_test_secret']);
+        $this->configureGeniusPay();
+        $reference = 'SAL-PENDINGREF000001';
+        $this->pendingGeniusPayTransaction($reference, 'MTX-PENDING0001');
 
-        $salon = Salon::factory()->create();
-        $plan = Plan::factory()->pro()->create();
-        Subscription::query()->create([
-            'salon_id' => $salon->id,
-            'plan_id' => $plan->id,
-            'status' => SubscriptionStatus::Trial,
-            'is_trial' => true,
-        ]);
-
-        $reference = 'SAL-PENDINGREF0001';
-        PaymentTransaction::query()->create([
-            'salon_id' => $salon->id,
-            'plan_id' => $plan->id,
-            'amount' => 15000,
-            'currency' => 'XOF',
-            'reference' => $reference,
-            'status' => PaymentTransactionStatus::Pending,
-        ]);
-
-        Http::fake(['*' => Http::response(['status' => false, 'message' => 'Erreur'], 500)]);
+        Http::fake(['*' => Http::response(['success' => false, 'error' => ['message' => 'Erreur']], 500)]);
 
         $this->get('/api/v1/payment/callback?reference='.$reference)
             ->assertRedirectContains('payment=pending');
@@ -330,50 +352,20 @@ class SecurityHardeningTest extends TestCase
     /** P3 — la réconciliation confirme un paiement dont le callback n'est jamais arrivé. */
     public function test_reconcile_command_confirms_pending_payment(): void
     {
-        config(['paystack.secret_key' => 'sk_test_secret']);
-
-        $salon = Salon::factory()->create();
-        $plan = Plan::factory()->pro()->create();
-        Subscription::query()->create([
-            'salon_id' => $salon->id,
-            'plan_id' => $plan->id,
-            'status' => SubscriptionStatus::Trial,
-            'is_trial' => true,
-        ]);
-
-        $reference = 'SAL-RECONCILEREF01';
-        $transaction = PaymentTransaction::query()->create([
-            'salon_id' => $salon->id,
-            'plan_id' => $plan->id,
-            'amount' => 15000,
-            'currency' => 'XOF',
-            'reference' => $reference,
-            'status' => PaymentTransactionStatus::Pending,
-        ]);
+        $this->configureGeniusPay();
+        $reference = 'SAL-RECONCILEREF0001';
+        $transaction = $this->pendingGeniusPayTransaction($reference, 'MTX-RECONCILE01');
         $transaction->forceFill(['created_at' => now()->subMinutes(30)])->save();
+        $this->fakeCompletedGeniusPayment('MTX-RECONCILE01');
 
-        Http::fake([
-            'https://api.paystack.co/transaction/verify/'.$reference => Http::response([
-                'status' => true,
-                'data' => [
-                    'status' => 'success',
-                    'reference' => $reference,
-                    'amount' => 1_500_000,
-                    'currency' => 'XOF',
-                    'paid_at' => now()->toIso8601String(),
-                    'channel' => 'mobile_money',
-                ],
-            ], 200),
-        ]);
-
-        $this->artisan('paystack:reconcile')->assertSuccessful();
+        $this->artisan('geniuspay:reconcile')->assertSuccessful();
 
         $this->assertDatabaseHas('payment_transactions', [
             'reference' => $reference,
             'status' => PaymentTransactionStatus::Success->value,
         ]);
         $this->assertDatabaseHas('subscriptions', [
-            'salon_id' => $salon->id,
+            'salon_id' => $transaction->salon_id,
             'status' => SubscriptionStatus::Active->value,
         ]);
     }

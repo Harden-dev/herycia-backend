@@ -3,8 +3,6 @@
 namespace App\Actions\Subscription;
 
 use App\Enums\BillingPaymentMethod;
-use App\Exceptions\PlanNotFoundException;
-use App\Exceptions\SubscriptionAlreadyActiveException;
 use App\Models\Subscription;
 use App\Repositories\Contracts\SubscriptionRepositoryInterface;
 use App\Services\Salon\SalonContextService;
@@ -13,6 +11,8 @@ use Illuminate\Support\Str;
 
 class SimulateSubscriptionPaymentAction
 {
+    private const ALLOWED_ENVIRONMENTS = ['local', 'testing'];
+
     public function __construct(
         private SalonContextService $salonContext,
         private SubscriptionRepositoryInterface $subscriptionRepository,
@@ -21,8 +21,8 @@ class SimulateSubscriptionPaymentAction
 
     public function execute(BillingPaymentMethod $method, ?string $planCode = null): Subscription
     {
-        // Jamais en production, même si le flag est activé par erreur (audit C3).
-        if (! config('salono.simulate_subscription_payments', false) || app()->isProduction()) {
+        // Uniquement en local et en test, même si le flag est activé par erreur (audit C3, pentest F3).
+        if (! config('salono.simulate_subscription_payments', false) || ! app()->environment(self::ALLOWED_ENVIRONMENTS)) {
             throw new \RuntimeException('La simulation de paiement est désactivée.');
         }
 

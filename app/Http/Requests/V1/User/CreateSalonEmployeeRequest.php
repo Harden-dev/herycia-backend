@@ -3,6 +3,7 @@
 namespace App\Http\Requests\V1\User;
 
 use App\Enums\SalonStaffRole;
+use App\Rules\SafeName;
 use App\Support\IvoryCoastPhone;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
@@ -31,7 +32,7 @@ class CreateSalonEmployeeRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['required', 'string', 'min:2', 'max:100'],
+            'name' => ['required', 'string', 'min:2', 'max:100', SafeName::person()],
             'phone' => ['required', 'string', function (string $attribute, mixed $value, \Closure $fail): void {
                 if (! IvoryCoastPhone::isValid((string) $value)) {
                     $fail('Le format du numéro de téléphone est invalide.');

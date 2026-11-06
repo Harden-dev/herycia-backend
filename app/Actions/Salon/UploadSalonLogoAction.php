@@ -3,12 +3,12 @@
 namespace App\Actions\Salon;
 
 use App\Data\Salon\SalonDetailData;
+use App\Jobs\Storage\DeleteSalonLogoJob;
 use App\Repositories\Contracts\SalonRepositoryInterface;
 use App\Repositories\Contracts\SubscriptionRepositoryInterface;
 use App\Services\Salon\SalonContextService;
 use App\Services\Storage\SalonLogoStorageService;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class UploadSalonLogoAction
@@ -20,40 +20,37 @@ class UploadSalonLogoAction
         private SalonLogoStorageService $logoStorage,
     ) {}
 
+    /**
+     * Le nouveau fichier est écrit avant la mise à jour du salon (une seule écriture BDD, sans
+     * transaction ouverte pendant l'accès au stockage) ; l'ancien n'est supprimé qu'après, en file.
+     */
     public function execute(UploadedFile $logo): SalonDetailData
     {
-        $newLogoPath = null;
+        $salon = $this->salonContext->resolveAuthenticatedSalon();
+        $previousLogoPath = $salon->logo_url;
+        $newLogoPath = $this->logoStorage->upload($logo);
 
         try {
-            return DB::transaction(function () use ($logo, &$newLogoPath) {
-                $salon = $this->salonContext->resolveAuthenticatedSalon();
-
-                if ($salon->logo_url) {
-                    $this->logoStorage->delete($salon->logo_url);
-                }
-
-                $newLogoPath = $this->logoStorage->upload($logo);
-                $salon = $this->salonRepository->update($salon, ['logo_url' => $newLogoPath]);
-
-                Log::info('Salon logo uploaded', [
-                    'salon_id' => $salon->id,
-                    'path' => $newLogoPath,
-                ]);
-
-                $subscription = $this->subscriptionRepository->findLatestBySalonId($salon->id);
-
-                return new SalonDetailData(
-                    $salon,
-                    $subscription,
-                    $this->logoStorage->url($salon->logo_url),
-                );
-            });
+            $salon = $this->salonRepository->update($salon, ['logo_url' => $newLogoPath]);
         } catch (\Throwable $e) {
-            if ($newLogoPath) {
-                $this->logoStorage->delete($newLogoPath);
-            }
+            $this->logoStorage->delete($newLogoPath);
 
             throw $e;
         }
+
+        if ($previousLogoPath) {
+            DeleteSalonLogoJob::dispatch($previousLogoPath);
+        }
+
+        Log::info('Salon logo uploaded', [
+            'salon_id' => $salon->id,
+            'path' => $newLogoPath,
+        ]);
+
+        return new SalonDetailData(
+            $salon,
+            $this->subscriptionRepository->findLatestBySalonId($salon->id),
+            $this->logoStorage->url($salon->logo_url),
+        );
     }
 }

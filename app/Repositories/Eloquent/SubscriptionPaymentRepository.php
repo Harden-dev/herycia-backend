@@ -2,6 +2,7 @@
 
 namespace App\Repositories\Eloquent;
 
+use App\Enums\BillingPaymentStatus;
 use App\Models\SubscriptionPayment;
 use App\Repositories\Contracts\SubscriptionPaymentRepositoryInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -22,6 +23,38 @@ class SubscriptionPaymentRepository implements SubscriptionPaymentRepositoryInte
         return $this->paymentModel->newQuery()
             ->with(['salon', 'plan', 'subscription'])
             ->find($id);
+    }
+
+    public function findByReference(string $reference): ?SubscriptionPayment
+    {
+        return $this->paymentModel->newQuery()
+            ->where('reference', $reference)
+            ->first();
+    }
+
+    public function update(SubscriptionPayment $payment, array $data): SubscriptionPayment
+    {
+        $payment->update($data);
+
+        return $payment->refresh();
+    }
+
+    public function findLatestPaidForSubscription(string $subscriptionId): ?SubscriptionPayment
+    {
+        return $this->paymentModel->newQuery()
+            ->where('subscription_id', $subscriptionId)
+            ->where('status', BillingPaymentStatus::Paid->value)
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->first();
+    }
+
+    public function existsOtherForSubscription(string $subscriptionId, string $exceptPaymentId): bool
+    {
+        return $this->paymentModel->newQuery()
+            ->where('subscription_id', $subscriptionId)
+            ->whereKeyNot($exceptPaymentId)
+            ->exists();
     }
 
     public function paginateForAdmin(

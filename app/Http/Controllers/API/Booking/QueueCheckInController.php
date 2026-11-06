@@ -7,6 +7,7 @@ use App\Models\QueueEntry;
 use App\Models\Salon;
 use App\Models\Service;
 use App\Repositories\Contracts\SubscriptionRepositoryInterface;
+use App\Rules\SafeName;
 use App\Services\Queue\QueueCheckInService;
 use App\Services\Queue\QueueException;
 use App\Services\Queue\QueueWalkInService;
@@ -116,7 +117,7 @@ class QueueCheckInController extends Controller
             'key' => ['required', 'string', 'max:64'],
             'service_id' => ['required', 'uuid'],
             'stylist_id' => ['nullable', 'uuid'],
-            'name' => ['required', 'string', 'min:2', 'max:100'],
+            'name' => ['required', 'string', 'min:2', 'max:100', SafeName::person()],
             'phone' => ['required', 'string', 'max:20'],
         ]);
 

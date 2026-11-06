@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Booking;
 
+use App\Rules\SafeName;
 use App\Support\IvoryCoastPhone;
 use Carbon\Carbon;
 use Illuminate\Contracts\Validation\Validator;
@@ -24,7 +25,7 @@ class CreatePublicBookingRequest extends FormRequest
                     $fail('Le format du numéro de téléphone est invalide.');
                 }
             }],
-            'client_name' => ['required', 'string', 'min:2', 'max:100'],
+            'client_name' => ['required', 'string', 'min:2', 'max:100', SafeName::person()],
             'service_id' => ['required', 'uuid', 'exists:services,id'],
             'user_id' => ['required', 'uuid', 'exists:users,id'],
             'date' => ['required_without:scheduled_at', 'date_format:Y-m-d'],

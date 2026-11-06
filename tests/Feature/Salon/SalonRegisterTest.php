@@ -60,7 +60,7 @@ class SalonRegisterTest extends TestCase
             ->assertJsonPath('data.user.role', SalonStaffRole::Admin->value)
             ->assertJsonPath('data.subscription.status', SubscriptionStatus::Trial->value)
             ->assertJsonPath('data.subscription.plan.code', 'basic')
-            ->assertJsonPath('data.subscription.plan.price_fcfa', 5000)
+            ->assertJsonPath('data.subscription.plan.price_fcfa', 3250)
             ->assertJsonPath('data.subscription.trial_ends_at', '2026-06-12')
             ->assertJsonPath('data.salon.slug', 'salon-koffi-cocody')
             ->assertJsonStructure([

@@ -3,10 +3,12 @@
 namespace App\Listeners;
 
 use App\Events\SalonRegistered;
+use Illuminate\Contracts\Events\ShouldHandleEventsAfterCommit;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Log;
 
-class LogSalonRegistered implements ShouldQueue
+/** Traité en file après le commit de la transaction qui émet l'événement (jamais sur rollback). */
+class LogSalonRegistered implements ShouldHandleEventsAfterCommit, ShouldQueue
 {
     public function handle(SalonRegistered $event): void
     {

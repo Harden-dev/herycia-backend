@@ -3,6 +3,7 @@
 namespace App\Http\Requests\V1\Salon;
 
 use App\Enums\SalonCity;
+use App\Rules\SafeName;
 use App\Support\IvoryCoastPhone;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
@@ -22,7 +23,7 @@ class UpdateSalonRequest extends FormRequest
         $salonId = $this->user()?->salon_id;
 
         return [
-            'name' => ['sometimes', 'string', 'min:2', 'max:100', 'regex:/^[\pL\pN\s\-\'’]+$/u'],
+            'name' => ['sometimes', 'string', 'min:2', 'max:100', SafeName::label()],
             'phone' => ['sometimes', 'nullable', 'string', function (string $attribute, mixed $value, \Closure $fail): void {
                 if ($value !== null && $value !== '' && ! IvoryCoastPhone::isValid((string) $value)) {
                     $fail('Le format du numéro de téléphone est invalide.');
@@ -50,7 +51,6 @@ class UpdateSalonRequest extends FormRequest
         return [
             'name.min' => 'Le nom du salon doit contenir au moins 2 caractères.',
             'name.max' => 'Le nom du salon ne peut pas dépasser 100 caractères.',
-            'name.regex' => 'Le nom du salon contient des caractères non autorisés.',
             'whatsapp_number.unique' => 'Ce numéro WhatsApp est déjà associé à un salon.',
             'city.in' => 'La ville sélectionnée est invalide.',
             'address.max' => 'L\'adresse ne peut pas dépasser 255 caractères.',

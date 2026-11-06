@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\BillingPaymentMethod;
 use App\Enums\BillingPaymentStatus;
+use App\Enums\SubscriptionStatus;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -19,23 +20,30 @@ class SubscriptionPayment extends Model
         'subscription_id',
         'plan_id',
         'amount',
+        'gateway_amount',
         'method',
         'status',
         'reference',
         'period_start',
         'period_end',
         'paid_at',
+        'previous_plan_id',
+        'previous_ends_at',
+        'previous_status',
     ];
 
     protected function casts(): array
     {
         return [
             'amount' => 'integer',
+            'gateway_amount' => 'integer',
             'method' => BillingPaymentMethod::class,
             'status' => BillingPaymentStatus::class,
             'period_start' => 'date',
             'period_end' => 'date',
             'paid_at' => 'datetime',
+            'previous_ends_at' => 'date',
+            'previous_status' => SubscriptionStatus::class,
         ];
     }
 

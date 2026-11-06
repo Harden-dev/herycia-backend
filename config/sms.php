@@ -23,4 +23,10 @@ return [
     // Plafond de SMS de rendez-vous par salon et par 24 h (protection contre le « SMS pumping », audit H5)
     'daily_limit_per_salon' => (int) env('SMS_DAILY_LIMIT_PER_SALON', 200),
 
+    // Plafond de SMS par numéro destinataire et par 24 h, tous salons confondus (anti « SMS bombing », pentest P2)
+    'daily_limit_per_recipient' => (int) env('SMS_DAILY_LIMIT_PER_RECIPIENT', 10),
+
+    // Plafond global de SMS de bienvenue par heure : inscription ouverte, numéro non vérifié (pentest P1)
+    'welcome_hourly_limit' => (int) env('SMS_WELCOME_HOURLY_LIMIT', 20),
+
 ];

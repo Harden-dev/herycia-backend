@@ -7,10 +7,10 @@ use App\Repositories\Contracts\AppointmentRepositoryInterface;
 use App\Repositories\Contracts\AuditLogRepositoryInterface;
 use App\Repositories\Contracts\ClientRepositoryInterface;
 use App\Repositories\Contracts\DashboardRepositoryInterface;
-use App\Repositories\Contracts\QueueEntryRepositoryInterface;
 use App\Repositories\Contracts\PaymentRepositoryInterface;
 use App\Repositories\Contracts\PaymentTransactionRepositoryInterface;
 use App\Repositories\Contracts\PlanRepositoryInterface;
+use App\Repositories\Contracts\QueueEntryRepositoryInterface;
 use App\Repositories\Contracts\SalonRepositoryInterface;
 use App\Repositories\Contracts\SalonScheduleRepositoryInterface;
 use App\Repositories\Contracts\ServiceRepositoryInterface;
@@ -22,16 +22,17 @@ use App\Repositories\Eloquent\AppointmentRepository;
 use App\Repositories\Eloquent\AuditLogRepository;
 use App\Repositories\Eloquent\ClientRepository;
 use App\Repositories\Eloquent\DashboardRepository;
-use App\Repositories\Eloquent\QueueEntryRepository;
 use App\Repositories\Eloquent\PaymentRepository;
 use App\Repositories\Eloquent\PaymentTransactionRepository;
 use App\Repositories\Eloquent\PlanRepository;
+use App\Repositories\Eloquent\QueueEntryRepository;
 use App\Repositories\Eloquent\SalonRepository;
 use App\Repositories\Eloquent\SalonScheduleRepository;
 use App\Repositories\Eloquent\ServiceRepository;
 use App\Repositories\Eloquent\SubscriptionPaymentRepository;
 use App\Repositories\Eloquent\SubscriptionRepository;
 use App\Repositories\Eloquent\UserRepository;
+use App\Support\IvoryCoastPhone;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Middleware\TrustProxies;
 use Illuminate\Http\Request;
@@ -114,7 +115,9 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('public-read', fn (Request $request) => Limit::perMinute(60)->by('public-read:'.$request->ip()));
 
         RateLimiter::for('public-booking', function (Request $request) {
-            $phone = preg_replace('/\D/', '', (string) $request->input('client_phone')) ?? '';
+            // Numéro normalisé : « 0707… », « +225 07… » et « 2250707… » partagent la même limite (pentest P2).
+            $rawPhone = $request->input('client_phone');
+            $phone = is_string($rawPhone) ? IvoryCoastPhone::normalize($rawPhone) : '';
 
             return [
                 Limit::perHour(10)->by('booking-ip:'.$request->ip()),
@@ -124,6 +127,21 @@ class AppServiceProvider extends ServiceProvider
 
         RateLimiter::for('public-checkin', fn (Request $request) => Limit::perHour(30)->by('checkin-ip:'.$request->ip()));
 
+        // Création de lien GeniusPay (pentest M3) : par salon et par utilisateur, pour protéger le compte marchand.
+        RateLimiter::for('payment-initialize', function (Request $request) {
+            $user = $request->user();
+            $salonKey = $user?->salon_id ?? $request->ip();
+
+            return [
+                Limit::perMinute(5)->by('payment-init-salon:'.$salonKey),
+                Limit::perHour(20)->by('payment-init-salon-hour:'.$salonKey),
+                Limit::perMinute(5)->by('payment-init-user:'.($user?->getAuthIdentifier() ?? $request->ip())),
+            ];
+        });
+
         RateLimiter::for('payment-callback', fn (Request $request) => Limit::perMinute(30)->by('payment-cb:'.$request->ip()));
+
+        // Large : GeniusPay peut livrer des rafales légitimes ; freine seulement l'abus.
+        RateLimiter::for('payment-webhook', fn (Request $request) => Limit::perMinute(120)->by('payment-webhook:'.$request->ip()));
     }
 }

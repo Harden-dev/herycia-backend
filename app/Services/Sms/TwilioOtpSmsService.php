@@ -2,10 +2,11 @@
 
 namespace App\Services\Sms;
 
+use App\Support\Pii;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
-use Twilio\Rest\Client;
 use Throwable;
+use Twilio\Rest\Client;
 
 class TwilioOtpSmsService
 {
@@ -17,7 +18,7 @@ class TwilioOtpSmsService
     {
         if (! config('sms.otp_enabled')) {
             Log::debug('SMS OTP skipped: SMS_OTP_ENABLED is false', [
-                'to' => $toE164,
+                'to' => Pii::maskPhone($toE164),
             ]);
 
             return;
@@ -45,13 +46,14 @@ class TwilioOtpSmsService
                 'from' => $from,
                 'body' => $body,
             ]);
-            Log::info('SMS OTP sent via Twilio', ['to' => $toE164]);
+            Log::info('SMS OTP sent via Twilio', ['to' => Pii::maskPhone($toE164)]);
         } catch (Throwable $e) {
+            $reason = Pii::redact($e->getMessage());
             Log::error('Twilio SMS OTP failed', [
-                'to' => $toE164,
-                'message' => $e->getMessage(),
+                'to' => Pii::maskPhone($toE164),
+                'message' => $reason,
             ]);
-            throw new RuntimeException('Envoi du SMS OTP impossible : '.$e->getMessage(), 0, $e);
+            throw new RuntimeException('Envoi du SMS OTP impossible : '.$reason);
         }
     }
 }

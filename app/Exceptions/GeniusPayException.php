@@ -4,6 +4,6 @@ namespace App\Exceptions;
 
 use Exception;
 
-class PaystackException extends Exception
+class GeniusPayException extends Exception
 {
 }

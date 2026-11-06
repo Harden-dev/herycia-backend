@@ -3,6 +3,7 @@
 namespace App\Actions\Auth;
 
 use App\Repositories\Contracts\UserRepositoryInterface;
+use App\Support\Pii;
 use Illuminate\Support\Facades\Log;
 
 class VerifyEmailAction
@@ -16,7 +17,7 @@ class VerifyEmailAction
         try {
             $user = $this->userRepository->findById($userId);
 
-            if (!$user) {
+            if (! $user) {
                 throw new \Exception('Utilisateur non trouvé');
             }
 
@@ -24,7 +25,7 @@ class VerifyEmailAction
                 throw new \Exception('Email déjà vérifié');
             }
 
-            if (!hash_equals((string) $hash, sha1($user->email))) {
+            if (! hash_equals((string) $hash, sha1($user->email))) {
                 throw new \Exception('Lien de vérification invalide');
             }
 
@@ -32,16 +33,16 @@ class VerifyEmailAction
 
             Log::info('Email verified successfully', [
                 'user_id' => $user->id,
-                'email' => $user->email,
+                'email' => Pii::maskEmail($user->email),
             ]);
 
             return true;
 
         } catch (\Exception $e) {
-            Log::error('Error verifying email: ' . $e->getMessage());
+            Log::error('Error verifying email: '.$e->getMessage());
             throw new \Exception($e->getMessage());
         }
     }
 }
 
-#salle numérique de l'UNA
+// salle numérique de l'UNA

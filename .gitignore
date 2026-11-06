@@ -24,6 +24,3 @@ backend_spec_dispositif_securite.md
 Homestead.json
 Homestead.yaml
 Thumbs.db
-/storage/firebase/*.json
-!/storage/firebase/firebase-credentials.example.json
-!/storage/firebase/.gitkeep

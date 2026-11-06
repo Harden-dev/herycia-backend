@@ -3,11 +3,11 @@
 namespace App\Jobs\Sms;
 
 use App\Enums\AppointmentStatus;
+use App\Jobs\Sms\Concerns\SendsSmsOnce;
 use App\Models\Appointment;
 use App\Services\PublicLinkService;
-use App\Services\Sms\TwilioSmsService;
 use App\Support\IvoryCoastPhone;
-use App\Support\SmsQuota;
+use App\Support\SmsText;
 use Carbon\Carbon;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -16,15 +16,14 @@ use Illuminate\Queue\SerializesModels;
 class SendAppointmentReminderSms implements ShouldQueue
 {
     use Queueable;
+    use SendsSmsOnce;
     use SerializesModels;
-
-    public int $tries = 3;
 
     public int $timeout = 30;
 
     public function __construct(public Appointment $appointment) {}
 
-    public function handle(TwilioSmsService $smsService, PublicLinkService $linkService): void
+    public function handle(PublicLinkService $linkService): void
     {
         $appointment = $this->appointment->fresh(['client', 'service', 'staff', 'salon']);
 
@@ -42,10 +41,6 @@ class SendAppointmentReminderSms implements ShouldQueue
             return;
         }
 
-        if (! SmsQuota::consume($appointment->salon_id)) {
-            return;
-        }
-
         $phone = IvoryCoastPhone::normalize($client->phone);
 
         if (! IvoryCoastPhone::isValid($phone)) {
@@ -59,16 +54,22 @@ class SendAppointmentReminderSms implements ShouldQueue
 
         $body = "⏰ Rappel de rendez-vous !\n\n".
             "Vous avez un rendez-vous dans *1 heure* :\n\n".
-            "💇 {$appointment->service->name}\n".
+            '💇 '.SmsText::clean($appointment->service?->name)."\n".
             '📅 '.$scheduledAt->format('d/m/Y à H\hi')."\n".
-            "✂️ Avec {$appointment->staff->name}\n".
-            "📍 {$appointment->salon->name} — {$appointment->salon->city}\n\n".
+            '✂️ Avec '.SmsText::clean($appointment->staff?->name)."\n".
+            '📍 '.SmsText::clean($appointment->salon?->name).' — '.SmsText::clean($appointment->salon?->city)."\n\n".
             'À tout à l\'heure ! 😊';
 
         if ($trackingLink !== null) {
             $body .= "\n\nSuivez votre RDV : {$trackingLink}";
         }
 
-        $smsService->send('+'.$phone, $body);
+        // Clé liée à l'horaire : un RDV reprogrammé reçoit bien un nouveau rappel.
+        $this->sendSmsOnce(
+            'appointment-reminder:'.$appointment->id.':'.$scheduledAt->getTimestamp(),
+            $appointment->salon_id,
+            '+'.$phone,
+            $body,
+        );
     }
 }

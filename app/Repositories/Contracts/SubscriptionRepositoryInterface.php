@@ -15,6 +15,9 @@ interface SubscriptionRepositoryInterface
 
     public function findById(string $id): ?Subscription;
 
+    /** Relit l'abonnement avec un verrou exclusif : à appeler dans une transaction. */
+    public function findByIdForUpdate(string $id): ?Subscription;
+
     public function update(Subscription $subscription, array $data): Subscription;
 
     public function paginateForAdmin(

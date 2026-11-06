@@ -81,7 +81,7 @@ class SalonSubscriptionTest extends TestCase
             'salon_id' => $salon->id,
             'subscription_id' => $subscription->id,
             'plan_id' => $plan->id,
-            'amount' => 5000,
+            'amount' => 3250,
             'method' => 'wave',
             'status' => 'paid',
         ]);

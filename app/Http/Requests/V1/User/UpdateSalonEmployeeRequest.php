@@ -3,6 +3,7 @@
 namespace App\Http\Requests\V1\User;
 
 use App\Enums\SalonStaffRole;
+use App\Rules\SafeName;
 use App\Support\IvoryCoastPhone;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
@@ -23,7 +24,7 @@ class UpdateSalonEmployeeRequest extends FormRequest
         $employeeId = $this->route('id');
 
         return [
-            'name' => ['sometimes', 'string', 'min:2', 'max:100'],
+            'name' => ['sometimes', 'string', 'min:2', 'max:100', SafeName::person()],
             'phone' => [
                 'sometimes',
                 'string',

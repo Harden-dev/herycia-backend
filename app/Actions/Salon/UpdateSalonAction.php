@@ -27,7 +27,7 @@ class UpdateSalonAction
             throw new \RuntimeException('Aucune donnée à mettre à jour.');
         }
 
-        return DB::transaction(function () use ($payload) {
+        $salon = DB::transaction(function () use ($payload) {
             $salon = $this->salonContext->resolveAuthenticatedSalon();
 
             if (isset($payload['whatsapp_number'])
@@ -35,14 +35,14 @@ class UpdateSalonAction
                 throw new \RuntimeException('Ce numéro WhatsApp est déjà associé à un salon.');
             }
 
-            $salon = $this->salonRepository->update($salon, $payload);
-            $subscription = $this->subscriptionRepository->findLatestBySalonId($salon->id);
-
-            return new SalonDetailData(
-                $salon,
-                $subscription,
-                $this->logoStorage->url($salon->logo_url),
-            );
+            return $this->salonRepository->update($salon, $payload);
         });
+
+        // Hors transaction : l'accès au stockage (exists) ne peut pas annuler la mise à jour.
+        return new SalonDetailData(
+            $salon,
+            $this->subscriptionRepository->findLatestBySalonId($salon->id),
+            $this->logoStorage->url($salon->logo_url),
+        );
     }
 }

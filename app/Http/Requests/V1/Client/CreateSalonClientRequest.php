@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\V1\Client;
 
+use App\Rules\SafeName;
 use App\Support\IvoryCoastPhone;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
@@ -21,7 +22,7 @@ class CreateSalonClientRequest extends FormRequest
         $salonId = auth('api')->user()?->salon_id;
 
         return [
-            'name' => ['required', 'string', 'min:2', 'max:100'],
+            'name' => ['required', 'string', 'min:2', 'max:100', SafeName::person()],
             'phone' => [
                 'required',
                 'string',

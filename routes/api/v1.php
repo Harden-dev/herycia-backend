@@ -1,30 +1,28 @@
 <?php
+
 use App\Http\Controllers\API\V1\Appointment\AppointmentController;
 use App\Http\Controllers\API\V1\Auth\AuthController;
 use App\Http\Controllers\API\V1\Client\ClientController;
 use App\Http\Controllers\API\V1\Dashboard\DashboardController;
-use App\Http\Controllers\API\V1\Payment\PaystackCallbackController;
-use App\Http\Controllers\API\V1\Payment\PaystackWebhookController;
+use App\Http\Controllers\API\V1\Payment\GeniusPayCallbackController;
+use App\Http\Controllers\API\V1\Payment\GeniusPayWebhookController;
 use App\Http\Controllers\API\V1\Payment\PaymentController;
 use App\Http\Controllers\API\V1\Plan\PlanController;
 use App\Http\Controllers\API\V1\Queue\QueueController;
-use App\Services\Queue\QueueActionService;
-use App\Http\Controllers\API\V1\Subscription\SubscriptionController;
 use App\Http\Controllers\API\V1\Salon\SalonController;
 use App\Http\Controllers\API\V1\Service\ServiceController;
+use App\Http\Controllers\API\V1\Subscription\SubscriptionController;
 use App\Http\Controllers\API\V1\User\UserController;
-
+use App\Services\Queue\QueueActionService;
 use Illuminate\Support\Facades\Route;
-
 
 Route::prefix('v1')->group(function () {
     require __DIR__.'/v1/admin.php';
 
-
     Route::get('/plans', [PlanController::class, 'index'])->middleware('throttle:public-read');
-    Route::get('/payment/callback', PaystackCallbackController::class)->middleware('throttle:payment-callback');
-    // Webhook Paystack signé (HMAC SHA-512) : source de vérité pour l'activation des abonnements.
-    Route::post('/payment/webhook', PaystackWebhookController::class);
+    Route::get('/payment/callback', GeniusPayCallbackController::class)->middleware('throttle:payment-callback');
+    // Webhook GeniusPay signé (HMAC SHA-256 + horodatage) : source de vérité pour l'activation des abonnements.
+    Route::post('/payment/webhook', GeniusPayWebhookController::class)->middleware('throttle:payment-webhook');
 
     Route::prefix('auth')->group(function () {
         Route::post('/register', [AuthController::class, 'register'])
@@ -49,7 +47,8 @@ Route::prefix('v1')->group(function () {
 
         Route::middleware('role.admin')->prefix('subscription')->group(function () {
             Route::get('/', [SubscriptionController::class, 'show']);
-            Route::post('/initialize', [SubscriptionController::class, 'initialize']);
+            Route::post('/initialize', [SubscriptionController::class, 'initialize'])
+                ->middleware('throttle:payment-initialize');
             Route::post('/simulate-payment', [SubscriptionController::class, 'simulatePayment']);
         });
     });

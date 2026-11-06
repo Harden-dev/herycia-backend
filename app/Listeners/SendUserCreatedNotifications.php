@@ -4,13 +4,15 @@ namespace App\Listeners;
 
 use App\Events\UserCreated;
 use App\Services\User\UserNotification;
+use App\Support\Pii;
+use Illuminate\Contracts\Events\ShouldHandleEventsAfterCommit;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redis;
 
-class SendUserCreatedNotifications implements ShouldQueue
+/** Traité en file après le commit de la transaction qui émet l'événement (jamais sur rollback). */
+class SendUserCreatedNotifications implements ShouldHandleEventsAfterCommit, ShouldQueue
 {
-
     /**
      * Handle the event.
      */
@@ -27,6 +29,7 @@ class SendUserCreatedNotifications implements ShouldQueue
                 Log::info('SendUserCreatedNotifications SKIPPED (already processed)', [
                     'user_id' => $user->id,
                 ]);
+
                 return;
             }
 
@@ -42,7 +45,7 @@ class SendUserCreatedNotifications implements ShouldQueue
             // L'OTP sert déjà de vérification email/phone
             Log::info('Email verification by link disabled - using OTP only', [
                 'user_id' => $user->id,
-                'email' => $user->email,
+                'email' => Pii::maskEmail($user->email),
                 'email_verified' => $user->hasVerifiedEmail(),
             ]);
 
@@ -51,10 +54,9 @@ class SendUserCreatedNotifications implements ShouldQueue
             $notification->sendWelcomeEmail();
 
         } catch (\Exception $e) {
-            Log::error('Error sending user created notifications: ' . $e->getMessage(), [
+            Log::error('Error sending user created notifications: '.$e->getMessage(), [
                 'user_id' => $event->user->id,
             ]);
         }
     }
 }
-

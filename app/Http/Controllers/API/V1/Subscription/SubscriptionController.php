@@ -6,7 +6,9 @@ use App\Actions\Subscription\GetSalonSubscriptionAction;
 use App\Actions\Subscription\InitializeSubscriptionPaymentAction;
 use App\Actions\Subscription\SimulateSubscriptionPaymentAction;
 use App\Enums\BillingPaymentMethod;
-use App\Exceptions\PaystackException;
+use App\Exceptions\GeniusPayException;
+use App\Exceptions\IdempotencyConflictException;
+use App\Exceptions\IdempotencyKeyMismatchException;
 use App\Exceptions\PlanNotFoundException;
 use App\Exceptions\SubscriptionAlreadyActiveException;
 use App\Http\Controllers\Controller;
@@ -22,6 +24,8 @@ use Symfony\Component\HttpFoundation\Response;
 
 class SubscriptionController extends Controller
 {
+    private const PAYMENT_UNAVAILABLE_MESSAGE = 'Service de paiement momentanément indisponible.';
+
     public function __construct(
         private GetSalonSubscriptionAction $getSalonSubscriptionAction,
         private InitializeSubscriptionPaymentAction $initializeSubscriptionPaymentAction,
@@ -33,24 +37,34 @@ class SubscriptionController extends Controller
         try {
             $payload = $this->initializeSubscriptionPaymentAction->execute(
                 $request->string('plan_code')->toString(),
+                $request->string('idempotency_key')->toString(),
             );
 
             return new JsonResponse([
                 'success' => true,
                 'message' => 'Paiement initialisé avec succès.',
                 'data' => new SubscriptionPaymentInitializeResource($payload),
-            ], Response::HTTP_OK);
-        } catch (SubscriptionAlreadyActiveException|PlanNotFoundException $e) {
+            ], Response::HTTP_OK, [
+                'Idempotent-Replayed' => $payload['replayed'] ? 'true' : 'false',
+            ]);
+        } catch (SubscriptionAlreadyActiveException|PlanNotFoundException|IdempotencyKeyMismatchException $e) {
             return new JsonResponse([
                 'success' => false,
                 'message' => $this->safeMessage($e),
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
-        } catch (PaystackException $e) {
-            Log::error('Erreur Paystack initialize: '.$e->getMessage());
-
+        } catch (IdempotencyConflictException $e) {
             return new JsonResponse([
                 'success' => false,
                 'message' => $this->safeMessage($e),
+                'code' => $e->reason,
+            ], Response::HTTP_CONFLICT);
+        } catch (GeniusPayException $e) {
+            // Détail (message prestataire, configuration) uniquement dans les logs.
+            Log::error('Erreur GeniusPay initialize: '.$e->getMessage());
+
+            return new JsonResponse([
+                'success' => false,
+                'message' => self::PAYMENT_UNAVAILABLE_MESSAGE,
             ], Response::HTTP_BAD_GATEWAY);
         } catch (Exception $e) {
             Log::error('Erreur initialize abonnement: '.$e->getMessage());

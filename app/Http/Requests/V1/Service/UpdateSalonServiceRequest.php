@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\V1\Service;
 
+use App\Rules\SafeName;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Exceptions\HttpResponseException;
@@ -17,7 +18,7 @@ class UpdateSalonServiceRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['sometimes', 'string', 'min:2', 'max:100'],
+            'name' => ['sometimes', 'string', 'min:2', 'max:100', SafeName::label()],
             'duration_min' => ['sometimes', 'integer', 'min:5', 'max:480'],
             'price' => ['sometimes', 'integer', 'min:0'],
         ];

@@ -53,6 +53,15 @@ class SubscriptionRepository implements SubscriptionRepositoryInterface
             ->find($id);
     }
 
+    public function findByIdForUpdate(string $id): ?Subscription
+    {
+        return $this->subscriptionModel->newQuery()
+            ->with('plan')
+            ->whereKey($id)
+            ->lockForUpdate()
+            ->first();
+    }
+
     public function update(Subscription $subscription, array $data): Subscription
     {
         $subscription->update($data);

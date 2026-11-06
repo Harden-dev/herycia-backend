@@ -27,8 +27,8 @@ class PlanPublicTest extends TestCase
             ->assertJsonCount(2, 'data')
             ->assertJsonPath('data.0.code', 'basic')
             ->assertJsonPath('data.1.code', 'pro')
-            ->assertJsonPath('data.0.price_fcfa', 5000)
-            ->assertJsonPath('data.1.price_fcfa', 15000)
+            ->assertJsonPath('data.0.price_fcfa', 3250)
+            ->assertJsonPath('data.1.price_fcfa', 5250)
             ->assertJsonStructure([
                 'data' => [
                     '*' => [

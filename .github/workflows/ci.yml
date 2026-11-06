@@ -34,7 +34,7 @@ jobs:
         run: composer install --no-interaction --no-progress --prefer-dist
 
       - name: Audit de sécurité des dépendances
-        # Échoue sur toute vulnérabilité moyenne ou plus (firebase/php-jwt, faible, via kreait inutilisé)
+        # Échoue sur toute vulnérabilité moyenne ou plus
         run: composer audit --abandoned=ignore --ignore-severity=low
 
       - name: Préparer l'environnement
